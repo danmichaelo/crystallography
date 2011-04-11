@@ -393,6 +393,7 @@ proc ::Crystallography::GUI::show_gui {} {
   # When the orientation is changed, we update the orientation frame
   trace add variable ::vmd_logfile write ::Crystallography::GUI::logfile_cb
   
+  return $w
 }
 
 
