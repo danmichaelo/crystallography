@@ -26,7 +26,7 @@ The GUI is opened by using the menu item or by typing `cryst_tk`.
 
 To view along the [111] direction, say, type `view_along {1 1 1}`.
 
-To show crystal axes (without using the GUI), type `crystal_axes on -position lower-left`, sau.
+To show crystal axes (without using the GUI), type `crystal_axes on -position lower-left`, say.
 Similarly, type `view_vectors on` to show the vectors of the current viewing plane. 
 The plugin tries to show these as properly formatted Miller indices when a crystal plane
 is in focus.
