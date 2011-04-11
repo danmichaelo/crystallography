@@ -279,6 +279,7 @@ namespace eval ::Crystallography:: {
 
   set currentMol [molinfo top]     ;# mol of study
   if { $currentMol == -1 } { set currentMol "none" }
+  set previousMol $currentMol
   trace add variable ::Crystallography::currentMol write ::Crystallography::currentMolChanged
 
   # 4x4 transformation matrix in cartesian coordinates:
@@ -568,8 +569,12 @@ proc ::Crystallography::set_view_direction { args } {
 
 proc ::Crystallography::currentMolChanged {args} {
   variable currentMol
-  debug "Current mol changed to $currentMol"
-  drawSettingsChanged
+  variable previousMol
+  if {$previousMol != $currentMol} {
+    debug ">>>>>>>>>>>> Current mol changed from $previousMol to $currentMol"
+    set previousMol $currentMol
+    drawSettingsChanged
+  }  
 }
 
 proc ::Crystallography::drawSettingsChanged {args} {
@@ -591,7 +596,7 @@ proc ::Crystallography::check_canvas {} {
   variable canvasMol
   variable currentMol
   if {![catch {molinfo $canvasMol get id}]} return   ;# Canvas exists
-  debug "CREATING CANVAS"
+  debug ">>>>>>>>>>>> Creating canvas"
 
   # Create canvas mol for drawing:
   set canvasMol [mol new]
@@ -600,7 +605,7 @@ proc ::Crystallography::check_canvas {} {
   # Fixes the drawing canvas "molecule". This makes the canvas more stable, but if 
   # the molecule get out of view for some reason, it's harder to get it back into view.
   # This requires some testing.
-  mol fix $canvasMol
+  # mol fix $canvasMol
 
   if {$currentMol != "none" && $currentMol >= 0} {
     mol top $currentMol
