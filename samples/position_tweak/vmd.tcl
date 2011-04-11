@@ -24,8 +24,7 @@ mol modmaterial 0 0 Glossy
 # Crystallography
 #############################################################################
 
-package require crystallography_gui
-vmd_install_extension crystallography cryst_tk "Crystallography"
+vmd_install_extension crystallography_gui cryst_tk "Crystallography"
 
 #crystal_debug on
 cryst_tk

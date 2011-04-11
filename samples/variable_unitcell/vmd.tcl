@@ -41,6 +41,6 @@ scale by 1.2
 
 ##
 pbc box
-package require crystallography_gui
+vmd_install_extension crystallography_gui cryst_tk "Crystallography"
 cryst_tk
 
