@@ -41,6 +41,9 @@ scale by 1.2
 
 ##
 pbc box
-vmd_install_extension crystallography_gui cryst_tk "Crystallography"
+# Load crystallography package if it hasn't been loaded already 
+if { [catch {package present crystallography_gui}] } {
+    vmd_install_extension crystallography_gui cryst_tk "Crystallography"
+}
 cryst_tk
 
