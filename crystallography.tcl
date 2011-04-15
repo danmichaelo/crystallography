@@ -755,8 +755,6 @@ proc ::Crystallography::draw_3d_arrow {args} {
 			"-tiplength"   { set tiplen $val; incr argnum }
 			"-radius"      { set rad $val; incr argnum }
 			"-resolution"  { set res $val; incr argnum }
-			"-label"       { set lab $val; incr argnum }
-			"-fontsize"    { set fontsize $val; incr argnum }
 			default { error "error: crystallography: unknown option: $arg" }
 	    }
 	}
