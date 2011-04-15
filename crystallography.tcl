@@ -265,7 +265,11 @@ namespace eval ::Crystallography:: {
   
   set listenersEnabled 0     ;# whether the event listeners (Tcl "tracers") are activated or not
   #set crystallographyState off
-  set crystallographyColor black   ;# use a dark foreground color? 
+  
+  set darkColor black
+  set lightColor white
+  
+  set crystColor $darkColor   ;# use a dark foreground color? 
   set canvasMol -1                 ;# mol in which the drawing is done
   set canvasMolScale 1.            ;# scale of the canvas mol
   array set displaySize {x 1 y 1 z 1}    ;# size of window
@@ -714,63 +718,232 @@ proc ::Crystallography::reset_colors {} {
   }
   if {$backlight <= 1.2} {
     debug "  background is dark"
-    set crystColor white
+    set crystColor $::Crystallography::lightColor
   } else {
     debug "  background is light"
-    set crystColor black
+    set crystColor $::Crystallography::darkColor
   }
 }
 
-# draw_arrow origin vector [label] [thickness]
-proc ::Crystallography::draw_arrow {args} {
-  variable canvasMol
-  variable displaySize
-  set tip_arrow_len 0.2
-  set tip_label ""
-  set thickness 2.
+############################################################
+#
+# ::Crystallography::draw_3d_arrow $start $direction [OPTIONS...]
+#
+# Draws a 3D arrow from the point $start in the direction $direction.
+# Both $start and $direction are specified as lists of length 3.
+#
+# OPTIONS:
+#   -radius $radius
+#		arrow radius, in units of the arrow length
+#   -tiplength $len
+#		length of the arrow tip (the cone), in units of the arrow length
+#   -resolution $res
+#
+proc ::Crystallography::draw_3d_arrow {args} {
+	variable canvasMol
+    set rad 0.05
+	set tiplen 0.3
+    set res 10
 
-  set start [lindex $args 0]
-  set vec [lindex $args 1]
-  if {[llength $args] > 2} { set tip_label [lindex $args 2] }
-  if {[llength $args] > 3} { set thickness [lindex $args 3] }
-  set thickness_int [expr {round($thickness)}]        ;# the line drawing function is limited to integer widths
-  set fontsize [expr {.5*$thickness}]
+    # Parse arguments:
+    set start [lindex $args 0]
+    set vec [lindex $args 1]
+	for { set argnum 2 } { $argnum < [llength $args] } { incr argnum } {
+	    set arg [ lindex $args $argnum ]
+	    set val [ lindex $args [expr $argnum + 1]]
+	    switch -- $arg {
+			"-tiplength"   { set tiplen $val; incr argnum }
+			"-radius"      { set rad $val; incr argnum }
+			"-resolution"  { set res $val; incr argnum }
+			"-label"       { set lab $val; incr argnum }
+			"-fontsize"    { set fontsize $val; incr argnum }
+			default { error "error: crystallography: unknown option: $arg" }
+	    }
+	}
 
-  set disp "$displaySize(x) $displaySize(y) $displaySize(z)"
+    set end [vecadd $start $vec]
+    set middle [vecadd $start [vecscale [expr {1.0-$tiplen}] [vecsub $end $start]]]
+    set rad [expr {$rad*[veclength $vec]}]
+    
+    #puts "start: $start, middle: $middle, end: $end"
+	graphics $canvasMol cylinder $start $middle radius $rad resolution $res filled yes
+	graphics $canvasMol cone $middle $end radius [expr $rad * 2.3] resolution $res
 
-  set a1start [ vecmul $start $disp ]
-  set a1end [ vecadd $a1start [ vecmul $vec $disp ] ]
-
-  set veclen [ veclength [vecsub $a1end $a1start] ]
-  # Only show vector if its length exceeds a certain minimum treshold:
-  if { $veclen < 0.1 } { return 0 }
-
-  graphics $canvasMol line $a1start $a1end width $thickness_int
-  
-  # draw arrowhead:
-  set tip_r [ vectrans [transaxis z 45] [ vecscale -$tip_arrow_len $vec ] ]
-  set tip_l [ vectrans [transaxis z -45] [ vecscale -$tip_arrow_len $vec ] ]
-  graphics $canvasMol line $a1end "[ vecadd $a1end [ vecmul $tip_r $disp] ]" width $thickness_int
-  graphics $canvasMol line $a1end "[ vecadd $a1end [ vecmul $tip_l $disp] ]" width $thickness_int
-  
-  # draw label (and try to more or less center-align it):
-  set dist [vecscale 0.2 [vecsub $a1end $a1start]]
-  set cos_ang [expr {[vecdot "1 0 0" "$dist"] / [veclength "$dist"]}]   ;# [-1,1]
-  set char_width [expr {$fontsize*0.04}]   ;# the approximate width of a single character
-  set str_width [expr {$char_width * [string length $tip_label]}]
-  set dx [expr {-$str_width/2. + $str_width/2*$cos_ang}] ;# subtract for approximate center-alignment
-  set dist [vecadd $dist "$dx 0 0"]
-  set lab_pos [vecadd $a1end $dist]
-  # If label goes out of screen, fix it:
-  if {[set oos [expr {[lindex $lab_pos 0] + .95*$displaySize(x)}]] < 0.} { 
-      set lab_pos [vecadd $lab_pos "[expr {-$oos}] 0 0"] }
-  if {[set oos [expr {[lindex $lab_pos 0] + $str_width - 0.95*$displaySize(x)}]] > 0.} { 
-      set lab_pos [vecadd $lab_pos "[expr {-$oos}] 0 0"] }
-  graphics $canvasMol text $lab_pos "$tip_label" thickness $fontsize size $fontsize
-  # Debug: Uncomment to visualize the quality of the pseudo-center-alignment:
-  #graphics $canvasMol line "$lab_pos" [vecadd "$lab_pos" "$str_width 0 0"]
-  return $lab_pos
 }
+
+
+# draw_2d_arrow origin vector [label] [thickness]
+proc ::Crystallography::draw_2d_arrow {args} {
+    variable canvasMol
+  	set tiplen 0.2
+    set thickness 2.
+
+    set start [lindex $args 0]
+    set vec [lindex $args 1]
+    for { set argnum 2 } { $argnum < [llength $args] } { incr argnum } {
+	    set arg [ lindex $args $argnum ]
+	    set val [ lindex $args [expr $argnum + 1]]
+	    switch -- $arg {
+			"-tiplength"   { set tiplen $val; incr argnum }
+			"-thickness"   { set thickness $val; incr argnum }
+			default { error "error: crystallography: unknown option: $arg" }
+	    }
+	}
+	set thickness_int [expr {round($thickness)}]        ;# the line drawing function is limited to integer widths
+
+    set end [vecadd $start $vec]
+    set middle [vecadd $start [vecscale [expr {1.0-$tiplen}] [vecsub $end $start]]]
+
+    # draw arrowline:
+    graphics $canvasMol line $start $end width $thickness_int
+  
+    # draw arrowhead:
+    set tip_r [ vectrans [transaxis z 45] [ vecscale -$tiplen $vec ] ]
+    set tip_l [ vectrans [transaxis z -45] [ vecscale -$tiplen $vec ] ]
+    graphics $canvasMol line $end [vecadd $end $tip_r] width $thickness_int
+    graphics $canvasMol line $end [vecadd $end $tip_l] width $thickness_int
+}
+
+############################################################
+#
+# ::Crystallography::draw_arrow_label $start $direction $label [OPTIONS...]
+# 
+# Draws a textlabel $label for an arrow pointing from $start in the direction $direction.
+# Both $start and $direction are specified as lists of length 3.
+#
+# OPTIONS:
+#   -fontsize $fontsize
+#   -distance $dist
+#		distance from the arrow, in units of the arrow length
+#
+proc ::Crystallography::draw_arrow_label {args} {
+    variable canvasMol
+    variable displaySize
+	set dist 0.2
+	set fontsize 1.0
+	set char_width 0.03			;# the empirical character width "constant" at unit fontsize 
+
+    # Parse arguments:
+    set start [lindex $args 0]
+    set vec [lindex $args 1]
+    set label [lindex $args 2]
+    for { set argnum 3 } { $argnum < [llength $args] } { incr argnum } {
+	    set arg [ lindex $args $argnum ]
+	    set val [ lindex $args [expr $argnum + 1]]
+	    switch -- $arg {
+			"-fontsize"    { set fontsize $val; incr argnum }
+			"-distance"    { set dist $val; incr argnum }
+			default { error "error: crystallography: unknown option: $arg" }
+	    }
+	}
+
+    set end [vecadd $start $vec]
+    
+    # draw label (and try to more or less center-align it):
+
+    set dist [vecscale $dist [lreplace $vec 2 2 0.0]] ;# x,y direction only, drop z direction
+    
+    set cos_ang [expr {[vecdot "1 0 0" "$dist"] / [veclength "$dist"]}]   ;# [-1,1]
+    set char_width [expr {$displaySize(z)*$fontsize*$char_width}]
+    set str_width [expr {$char_width * [string length $label] }]
+    set dx [expr {-$str_width/2. + $str_width/2*$cos_ang}] ;# subtract for approximate center-alignment
+    set dist [vecadd $dist "$dx 0 0"]
+    set lab_pos [vecadd $end $dist]
+    # If label goes out of screen, fix it:
+    if {[set oos [expr {[lindex $lab_pos 0] + .95*$displaySize(x)}]] < 0.} { 
+        set lab_pos [vecadd $lab_pos "[expr {-$oos}] 0 0"] }
+    if {[set oos [expr {[lindex $lab_pos 0] + $str_width - 0.95*$displaySize(x)}]] > 0.} { 
+        set lab_pos [vecadd $lab_pos "[expr {-$oos}] 0 0"] }
+    graphics $canvasMol text $lab_pos "$label" thickness $fontsize size $fontsize
+    
+    # Debug: Uncomment to visualize the quality of the pseudo-center-alignment:
+    #graphics $canvasMol line "$lab_pos" [vecadd "$lab_pos" "$str_width 0 0"]
+    
+    return $lab_pos
+}
+
+############################################################
+#
+# ::Crystallography::draw_arrow_miller_label $start $direction $projection_vector [OPTIONS...]
+# 
+# Adds a label based on $projection_vector for an arrow pointing from $start in the 
+# direction $direction. 
+# Both $start and $direction are specified as lists of length 3.
+#
+# OPTIONS:
+#   -fontsize $fontsize
+#
+proc ::Crystallography::draw_arrow_miller_label {args} {
+    variable canvasMol
+    variable displaySize
+    set char_width 0.03
+    set thickness 2.
+    set fontsize 1.0
+  
+    # Parse arguments:
+    set origin [lindex $args 0]
+    set vec [lindex $args 1]
+    set proj [lindex $args 2]
+    for { set argnum 3 } { $argnum < [llength $args] } { incr argnum } {
+	    set arg [ lindex $args $argnum ]
+	    set val [ lindex $args [expr $argnum + 1]]
+	    switch -- $arg {
+			"-fontsize"    { set fontsize $val; incr argnum }
+			default { error "error: crystallography: unknown option: $arg" }
+	    }
+	}
+
+    # Scale vector to integer values (e.g. [0.7 0 0.7] -> [1 0 1])
+    set scale 1
+    for {set j 0} {$j < 3} {incr j} {
+      set vlen [expr {abs([lindex $proj $j])}]
+      if { $vlen > 0.001 && $vlen < $scale } { 
+        set scale $vlen
+      }
+    }
+    set int_proj [vecscale [expr {1./$scale}] $proj]
+  
+    set x [lindex $int_proj 0]
+    set y [lindex $int_proj 1]
+    set z [lindex $int_proj 2]
+  
+  #debug "V: $int_proj"
+  # Check if the vector is (more or less) along a crystal plane 
+  if { [expr {round($x*10)/10. == round($x)*1.}] &&
+       [expr {round($y*10)/10. == round($y)*1.}] &&
+       [expr {round($z*10)/10. == round($z)*1.}] } {
+    
+    # Hurray, it is! Then we convert the float coordinates into 
+    # integer ones and replace minuses by overbars to make the 
+    # output look like standard Miller notation.
+    set x [expr {round($x)}]
+    set y [expr {round($y)}]
+    set z [expr {round($z)}]
+    if {[set absx [expr {abs($x)}]] == $x} { set barx " " } else { set barx "_" }
+    if {[set absy [expr {abs($y)}]] == $y} { set bary " " } else { set bary "_" }
+    if {[set absz [expr {abs($z)}]] == $z} { set barz " " } else { set barz "_" }
+   
+    # Draw arrow with label:
+    set txt [format "\[%d%d%d\]" $absx $absy $absz ] 
+    set lab_pos [draw_arrow_label $origin $vec $txt -fontsize $fontsize]
+
+    # Add overbars:
+    set char_width [expr {$displaySize(z)*$fontsize*$char_width}]
+    set bar_pos [vecadd $lab_pos "[expr {-0.01*$char_width}] [expr {1.7*$char_width}] 0"]
+    graphics $canvasMol text $bar_pos " $barx$bary$barz " size $fontsize
+
+  } else {
+    
+    # Otherwise, we just output the raw coordinates
+    set txt [ format "(% .2f % .2f % .2f)" [lindex $proj 0] [lindex $proj 1] [lindex $proj 2] ]
+    #graphics $canvasMol text [ vecmul $pos $disp ] "$txt" size [expr {.8*$fontsize}]
+    draw_arrow_label $origin $vec $txt -fontsize $fontsize
+  }
+  # Draw fixed arrows
+  #set lab_pos [vecadd $origin "[vecscale 1.2 $xvec]"]  ;# add some space
+}
+
+
 
 proc ::Crystallography::draw_CrystallographicAxes {} {
   variable unitCell
@@ -781,24 +954,32 @@ proc ::Crystallography::draw_CrystallographicAxes {} {
   variable posUpperLeft
   variable posUpperRight
   variable posLowerRight
+  variable displaySize
   
   set rot [lindex [molinfo $currentMol get rotate_matrix] 0]
 
   set a [ vecnorm [list [lindex $unitCell 0 0] [lindex $unitCell 1 0] [lindex $unitCell 2 0]  [lindex $unitCell 3 0] ]]
-  set a_x [ vecdot $a [lindex $rot 0]]
-  set a_y [ vecdot $a [lindex $rot 1]]
+  set a_rot [vectrans $rot $a]
+  set a_x [lindex $a_rot 0]
+  set a_y [lindex $a_rot 1]
+  set a_z [lindex $a_rot 2]
 
   set b [ vecnorm [list [lindex $unitCell 0 1] [lindex $unitCell 1 1] [lindex $unitCell 2 1]  [lindex $unitCell 3 1] ]]
-  set b_x [ vecdot $b [lindex $rot 0]]
-  set b_y [ vecdot $b [lindex $rot 1]]
+  set b_rot [vectrans $rot $b]
+  set b_x [lindex $b_rot 0]
+  set b_y [lindex $b_rot 1]
+  set b_z [lindex $b_rot 2]
 
   set c [ vecnorm [list [lindex $unitCell 0 2] [lindex $unitCell 1 2] [lindex $unitCell 2 2]  [lindex $unitCell 3 2] ]]
-  set c_x [ vecdot $c [lindex $rot 0]]
-  set c_y [ vecdot $c [lindex $rot 1]]
+  set c_rot [vectrans $rot $c]
+  set c_x [lindex $c_rot 0]
+  set c_y [lindex $c_rot 1]
+  set c_z [lindex $c_rot 2]
 
 
   set len [expr {0.2 * $crystAxesScale / 100.}]
-  set thickness [expr {2. * $crystAxesScale / 100.}]
+  #set thickness [expr {2. * $crystAxesScale / 100.}]
+  set fontsize [expr {$crystAxesScale / 100.}]
  
   switch "$crystAxesLoc" {
     "lower left" { set origin_x $posLowerLeft(x); set origin_y $posLowerLeft(y); }
@@ -823,77 +1004,30 @@ proc ::Crystallography::draw_CrystallographicAxes {} {
   if {[set oos [expr {$origin_y + $len*$c_y + 0.90}]] < 0.} { set origin_y [expr {$origin_y - $oos}] 
   } elseif {[set oos [expr {$origin_y + $len*$c_y - 0.90}]] > 0.} { set origin_y [expr {$origin_y - $oos}] }
 
-  draw_arrow "$origin_x $origin_y 1" "[expr $len*$a_x] [expr $len*$a_y] 0" "a" $thickness
-  draw_arrow "$origin_x $origin_y 1" "[expr $len*$b_x] [expr $len*$b_y] 0" "b" $thickness
-  draw_arrow "$origin_x $origin_y 1" "[expr $len*$c_x] [expr $len*$c_y] 0" "c" $thickness
+  #draw_2d_arrow "$origin_x $origin_y 0" "[expr $len*$a_x] [expr $len*$a_y] 0" "a" $thickness
+  #draw_2d_arrow "$origin_x $origin_y 0" "[expr $len*$b_x] [expr $len*$b_y] 0" "b" $thickness
+  #draw_2d_arrow "$origin_x $origin_y 0" "[expr $len*$c_x] [expr $len*$c_y] 0" "c" $thickness
   
-}
-
-# draw_miller_arrow $origin $vector $projection_vector [$thickness]
-proc ::Crystallography::draw_miller_arrow {args} {
-  variable canvasMol
-  variable displaySize
-  
-  set thickness 2.
-  set origin [lindex $args 0]
-  set vec [lindex $args 1]
-  set proj [lindex $args 2]
-  if {[llength $args] > 3} { set thickness [lindex $args 3] }
-  set thickness_int [expr {round($thickness)}]        ;# the line drawing function is limited to integer widths
-  set fontsize [expr {.5*$thickness}]
-
-
-  # Scale vector to integer values (e.g. [0.7 0 0.7] -> [1 0 1])
-  set scale 1
-  for {set j 0} {$j < 3} {incr j} {
-    set vlen [expr {abs([lindex $proj $j])}]
-    if { $vlen > 0.001 && $vlen < $scale } { 
-      set scale $vlen
-    }
-  }
-  set int_proj [vecscale [expr {1./$scale}] $proj]
-  
-  set x [lindex $int_proj 0]
-  set y [lindex $int_proj 1]
-  set z [lindex $int_proj 2]
-
   set disp "$displaySize(x) $displaySize(y) $displaySize(z)"
   
-  #debug "V: $int_proj"
-  # Check if the vector is (more or less) along a crystal plane 
-  if { [expr {round($x*10)/10. == round($x)*1.}] &&
-       [expr {round($y*10)/10. == round($y)*1.}] &&
-       [expr {round($z*10)/10. == round($z)*1.}] } {
-    
-    # Hurray, it is! Then we convert the float coordinates into 
-    # integer ones and replace minuses by overbars to make the 
-    # output look like standard Miller notation.
-    set x [expr {round($x)}]
-    set y [expr {round($y)}]
-    set z [expr {round($z)}]
-    if {[set absx [expr {abs($x)}]] == $x} { set barx " " } else { set barx "_" }
-    if {[set absy [expr {abs($y)}]] == $y} { set bary " " } else { set bary "_" }
-    if {[set absz [expr {abs($z)}]] == $z} { set barz " " } else { set barz "_" }
-   
-    # Draw arrow with label:
-    set txt [format "\[%d%d%d\]" $absx $absy $absz ] 
-    set lab_pos [draw_arrow $origin $vec $txt $thickness]
+  set origin [vecmul "$origin_x $origin_y 0" $disp]
+  set len [expr {$len * $displaySize(z)}]
 
-    # Add overbars:
-    set bar_pos [vecadd $lab_pos "[vecmul "0 [expr {0.052*$fontsize}] 0" $disp]"]
-    graphics $canvasMol text $bar_pos " $barx$bary$barz " size $fontsize
+  # from length-4 to length-3 vectors, and scale to fixed size
+  set a [vecscale $len [lrange $a_rot 0 2]]
+  set b [vecscale $len [lrange $b_rot 0 2]]
+  set c [vecscale $len [lrange $c_rot 0 2]]
 
-  } else {
-    
-    # Otherwise, we just output the raw coordinates
-    set txt [ format "(% .2f % .2f % .2f)" [lindex $proj 0] [lindex $proj 1] [lindex $proj 2] ]
-    #graphics $canvasMol text [ vecmul $pos $disp ] "$txt" size [expr {.8*$fontsize}]
-    draw_arrow $origin $vec $txt $thickness
-  }
-  # Draw fixed arrows
-  #set lab_pos [vecadd $origin "[vecscale 1.2 $xvec]"]  ;# add some space
+  draw_3d_arrow $origin $a
+  draw_3d_arrow $origin $b
+  draw_3d_arrow $origin $c
+  
+  # Draw labels for vectors whose projection in the xy-plane is longer than a minimum treshold:
+  if {[veclength [lrange $a 0 1]] > 0.1} { draw_arrow_label $origin $a "a" -fontsize $fontsize }
+  if {[veclength [lrange $b 0 1]] > 0.1} { draw_arrow_label $origin $b "b" -fontsize $fontsize }
+  if {[veclength [lrange $c 0 1]] > 0.1} { draw_arrow_label $origin $c "c" -fontsize $fontsize }
+  
 }
-
 
 proc ::Crystallography::draw_ViewVectors {} {
   variable canvasMol
@@ -907,9 +1041,11 @@ proc ::Crystallography::draw_ViewVectors {} {
   variable posUpperLeft
   variable posUpperRight
   variable posLowerRight
+  variable displaySize
 
   set len [expr {0.2 * $viewVectorsScale / 100.}]
   set thickness [expr {2. * $viewVectorsScale / 100.}]
+  set fontsize [expr {$viewVectorsScale / 100.}]
   
   # Determine location
 
@@ -917,38 +1053,48 @@ proc ::Crystallography::draw_ViewVectors {} {
   switch "$viewVectorsLoc" {
     "lower left" { 
         set origin "$posLowerLeft(x) $posLowerLeft(y) 1"
-        set xvec "$len 0.0 0.0"                                 ;# rightwards
+        set xvec "1.0 0.0 0.0"                                 ;# rightwards
         set xproj [cart2cryst [lindex $rot 0 0]]
-        set yvec "0.0 $len 0.0"                                 ;# upwards
+        set yvec "0.0 1.0 0.0"                                 ;# upwards
         set yproj [cart2cryst [lindex $rot 0 1]]
     }
     "upper left" { 
         set origin "$posUpperLeft(x) $posUpperLeft(y) 1"
-        set xvec "$len 0.0 0.0"                                 ;# rightwards
+        set xvec "1.0 0.0 0.0"                                 ;# rightwards
         set xproj [cart2cryst [lindex $rot 0 0]]
-        set yvec "0.0 [expr {-$len}] 0.0"                       ;# downwards 
+        set yvec "0.0 -1.0 0.0"                                ;# downwards 
         set yproj [cart2cryst [vecscale -1 [lindex $rot 0 1]]]
     }
     "upper right" { 
         set origin "$posUpperRight(x) $posUpperRight(y) 1";
-        set xvec "[expr {-$len}] 0.0 0.0"                       ;# leftwards 
+        set xvec "-1.0 0.0 0.0"                                ;# leftwards 
         set xproj [cart2cryst [vecscale -1 [lindex $rot 0 0]]]
-        set yvec "0.0 [expr {-$len}] 0.0"                       ;# downwards 
+        set yvec "0.0 -1.0 0.0"                                ;# downwards 
         set yproj [cart2cryst [vecscale -1 [lindex $rot 0 1]]]
     }
     "lower right" { 
         set origin "$posLowerRight(x) $posLowerRight(y) 1" 
-        set xvec "[expr {-$len}] 0.0 0.0"                       ;# leftwards 
+        set xvec "-1.0 0.0 0.0"                                ;# leftwards 
         set xproj [cart2cryst [vecscale -1 [lindex $rot 0 0]]]
-        set yvec "0.0 $len 0.0"                                 ;# upwards
+        set yvec "0.0 1.0 0.0"                                 ;# upwards
         set yproj [cart2cryst [lindex $rot 0 1]]
     }
     default { set origin_x 0; set origin_y 0; }
   }
   
   # Draw arrows
-  draw_miller_arrow $origin $xvec $xproj $thickness
-  draw_miller_arrow $origin $yvec $yproj $thickness
+  set disp "$displaySize(x) $displaySize(y) $displaySize(z)"
+  set len [expr {$len * $displaySize(z)}]
+
+  set origin [vecmul $origin $disp]
+  set xvec [vecscale $len $xvec]
+  set yvec [vecscale $len $yvec]
+  
+  draw_2d_arrow $origin $xvec -thickness $thickness
+  draw_2d_arrow $origin $yvec -thickness $thickness
+  
+  draw_arrow_miller_label $origin $xvec $xproj -fontsize $fontsize
+  draw_arrow_miller_label $origin $yvec $yproj -fontsize $fontsize
 
 }
 
