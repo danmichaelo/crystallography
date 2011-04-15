@@ -12,6 +12,9 @@ cryst_tk
 # Load a molecule with unit cell data
 mol new {1CRN.pdb} type {pdb} waitfor -1
 
+# one with a hexagonal cell
+mol new {quartz.POSCAR} type {POSCAR} waitfor -1
+
 # and one without
 mol new {ice.pdb} type {pdb} waitfor -1
 

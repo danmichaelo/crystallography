@@ -4,7 +4,8 @@
 #############################################################################
 
 display rendermode GLSL
-display resize 600 600
+#display resize 600 600
+display resize 900 500
 display resetview
 color Display Background gray
 color Element Si silver

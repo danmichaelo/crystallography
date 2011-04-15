@@ -6,21 +6,23 @@
 #############################################################################
 
 display rendermode GLSL
-display resize 600 600
+display resize 500 500
 display resetview
-color Display Background gray
-color Element Si silver
-color Element P red
+color Display Background white
+color Element Si blue
+color Element O red
 
 #############################################################################
 # Load a molecule 
 #############################################################################
 
-mol new {trajectory.vtf} type {vtf} waitfor -1
+mol new {quartz.POSCAR} type {POSCAR} waitfor -1
 mol modselect 0 0 all
-mol modstyle 0 0 DynamicBonds 2.900000 0.100000 6.000000
+mol modstyle 0 0 VDW 0.300000 12.000000
 mol modcolor 0 0 Element
 mol modmaterial 0 0 Glossy
+
+pbc box -style arrows
 
 #############################################################################
 # Crystallography
@@ -33,7 +35,7 @@ if { [catch {package present crystallography_gui}] } {
 
 #crystal_debug on
 cryst_tk
-view_along {1 1 0}
+view_along {0 0 1}
 crystal_axes on -position lower-left
 view_vectors on -position upper-left
 
