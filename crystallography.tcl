@@ -1,36 +1,42 @@
-#############################################################################################
 #
-# Crystallography VMD plugin
+# crystallography.tcl : Crystallography VMD plugin
 #
-# This plugin was written primarily to make it easier to align the view direction along 
-# specific crystallographic directions. 
-# It adds commands to convert vectors between crystallographic and cartesian coordinates 
-# and a simple GUI for setting the view. The GUI is largely inspired by the "Orientation" 
-# window of the program VESTA and the "Set View Direction" window of CrystalMaker.
-#
-# For the plugin to work, the loaded molecule must contain unit cell information.
+#   This plugin was written primarily to make it easier to align the view direction along 
+#   specific crystallographic directions. 
+#   It also includes commands to convert vectors between crystallographic and cartesian coordinates,
+#   and to draw crystallographic axes arrows and view direction arrows.
+#   For the plugin to work, the loaded molecule must contain unit cell information.
 #
 # Author: Dan Michael O. Heggø <danmichaelo _at_ gmail.com>
 #
-# Inspiration gained from the 'ruler' plugin by Jordi Cohen and the 'colorscalebar' 
-# plugin by Wuwei Liang
+#   Great aid was obtained from looking into the code of the 'ruler' plugin by Cohen, 
+#   the 'colorscalebar' plugin by Liang and the 'pbctools' plugin by Henin, Lenz, Mura and Saam.
 #
+# Installation:
 #
-# usage: cryst
-# GUI: cryst_tk
-# 
-# Add to menu:
-#   vmd_install_extension crystallography_gui cryst_tk "Crystallography"
-# or 
-#   package require crystallography_gui
-#   menu tk register "Crystallography" cryst_tk
+#   Put the crystallography folder in a folder searched by VMD, that is, a folder listed in auto_path. 
+#   For instance, you may put it in ~/vmd/plugins, and add
+#       set auto_path [concat $env(HOME)/vmd/plugins $auto_path] ;
+#   to your ~/.vmdrc file. To add the plugin to the Plugins-menu, add the following to your ~/.vmdrc file 
+#   (or just type it in VMD when needed):
+#       vmd_install_extension crystallography cryst_tk "Crystallography"
+#   
+# Example usage:
 #
+#   To view along the [111] direction, say, type `view_along {1 1 1}`.
+#   To show crystal axes (without using the GUI), type `crystal_axes on -position lower-left`, say. 
+#   Similarly, type `view_vectors on` to show the vectors of the current viewing plane. 
+#   The plugin tries to show these as properly formatted Miller indices when a crystal plane is in focus.
+#   `cart2cryst` converts a cartesian coordinate vector into a crystal vector, and `cryst2cart` converts vice versa. 
 #
-# Known bugs:
-#  The plugin updates when it receives events from VMD. 
-#  VMD do not notify about all events. Examples of events that does not seem to be broudcasted include
-#   - smooth rotations: rotate [x | y | z] <angle> <increment>
-#   - display resize
+# Known bug(s):
+#
+#   When graphic elements are drawn in the VMD window, these elements need to be redrawn when the display 
+#   is altered in some way. The plugin listens to VMD events to be notified about such display changes,
+#   but VMD does not seem to inform about all such changes. Examples of events that does not seem to be 
+#   broudcasted include
+#      - smooth rotations: rotate [x | y | z] <angle> <increment>
+#      - display resize
 
 
 #############################################################################################
@@ -41,12 +47,17 @@
 #########################################
 # cart2cryst $vec
 #
-# Converts a vector of length 3 (4?) from cartesian to crystallographic 
-# coordinates using the available unit cell information.
+#     Converts a vector of length 3 (4?) from cartesian to crystallographic 
+#     coordinates using the available unit cell information.
 #
+# Arguments:
+#     vec     the vector to convert
+#
+# Returns:
+#     the converted vector
 proc cart2cryst {vec} {
-  ::Crystallography::update
-  return [::Crystallography::cart2cryst $vec]
+    ::Crystallography::update
+    return [::Crystallography::cart2cryst $vec]
 }
 
 #########################################
@@ -56,8 +67,8 @@ proc cart2cryst {vec} {
 # coordinates using the available unit cell information.
 #
 proc cryst2cart {vec} {
-  ::Crystallography::update
-  return [::Crystallography::cryst2cart $vec]
+    ::Crystallography::update
+    return [::Crystallography::cryst2cart $vec]
 }
 
 #########################################
@@ -80,13 +91,13 @@ proc cryst2cart {vec} {
 #     more molecules are loaded.
 #
 proc view_along {args} {
-  if {[llength $args] == 0} {
-    puts "usage: view_along projection_vector [upwards_vector]"
-    puts "example: view_along {1 1 1}"
-    return
-  }
-  ::Crystallography::update
-  eval ::Crystallography::set_view_direction $args
+    if {[llength $args] == 0} {
+        puts "usage: view_along projection_vector [upwards_vector]"
+        puts "example: view_along {1 1 1}"
+        return
+    }
+    ::Crystallography::update
+    eval ::Crystallography::set_view_direction $args
 }
 
 ##########################################
@@ -97,27 +108,27 @@ proc view_along {args} {
 # some more options than the command line interface.
 # 
 proc crystal_axes {args} {
-  if {[llength $args] == 0} {
-    puts "usage: crystal_axes on/off"
-    puts "example: crystal_axes on"
-    return
-  }
+    if {[llength $args] == 0} {
+        puts "usage: crystal_axes on/off"
+        puts "example: crystal_axes on"
+        return
+    }
 
-  if {[lindex $args 0] == "on"} {
-    set ::Crystallography::drawCrystAxes 1
-  } else {
-    set ::Crystallography::drawCrystAxes 0
-  }
+    if {[lindex $args 0] == "on"} {
+        set ::Crystallography::drawCrystAxes 1
+    } else {
+        set ::Crystallography::drawCrystAxes 0
+    }
 
-  # Parse options
-  for { set argnum 1 } { $argnum < [llength $args] } { incr argnum } {
-	 set arg [ lindex $args $argnum ]
-	 set val [ lindex $args [expr $argnum + 1]]
-	 switch -- $arg {
-		"-position"      { set ::Crystallography::crystAxesLoc [string map {{-} { }} $val]; incr argnum }
-		default { error "error: crystallogrpahy: unknown option: $arg" }
-	 }
-  }
+    # Parse options
+    for { set argnum 1 } { $argnum < [llength $args] } { incr argnum } {
+        set arg [ lindex $args $argnum ]
+        set val [ lindex $args [expr $argnum + 1]]
+        switch -- $arg {
+            "-position"      { set ::Crystallography::crystAxesLoc [string map {{-} { }} $val]; incr argnum }
+            default { error "error: crystallogrpahy: unknown option: $arg" }
+        }
+    }
 
 }
 
@@ -130,25 +141,25 @@ proc crystal_axes {args} {
 # some more options than the command line interface.
 # 
 proc view_vectors {args} {
-  if {[llength $args] == 0} {
-    puts "usage: view_vectors on/off"
-    puts "example: view_vectors on"
-    return
-  }
-  if {[lindex $args 0] == "on"} {
-    set ::Crystallography::drawViewVectors 1
-  } elseif {[lindex $args 0] == "off"} {
-    set ::Crystallography::drawViewVectors 0
-  }
-  # Parse options
-  for { set argnum 1 } { $argnum < [llength $args] } { incr argnum } {
-	 set arg [ lindex $args $argnum ]
-	 set val [ lindex $args [expr $argnum + 1]]
-	 switch -- $arg {
-		"-position"      { set ::Crystallography::viewVectorsLoc [string map {{-} { }} $val]; incr argnum }
-		default { error "error: crystallogrpahy: unknown option: $arg" }
-	 }
-  }
+    if {[llength $args] == 0} {
+        puts "usage: view_vectors on/off"
+        puts "example: view_vectors on"
+        return
+    }
+    if {[lindex $args 0] == "on"} {
+        set ::Crystallography::drawViewVectors 1
+    } elseif {[lindex $args 0] == "off"} {
+        set ::Crystallography::drawViewVectors 0
+    }
+    # Parse options
+    for { set argnum 1 } { $argnum < [llength $args] } { incr argnum } {
+        set arg [ lindex $args $argnum ]
+        set val [ lindex $args [expr $argnum + 1]]
+        switch -- $arg {
+            "-position"      { set ::Crystallography::viewVectorsLoc [string map {{-} { }} $val]; incr argnum }
+            default { error "error: crystallogrpahy: unknown option: $arg" }
+        }
+    }
 }
 
 ##########################################
@@ -157,16 +168,16 @@ proc view_vectors {args} {
 # Toggles the display of debug messages. 
 # 
 proc crystal_debug {args} {
-  if {[llength $args] == 0} {
-    puts "usage: crystal_debug on/off"
-    puts "example: crystal_debug on"
-    return
-  }
-  if {[lindex $args 0] == "on"} {
-    set ::Crystallography::printDebug 1
-  } elseif {[lindex $args 0] == "off"} {
-    set ::Crystallography::printDebug 0
-  }
+    if {[llength $args] == 0} {
+        puts "usage: crystal_debug on/off"
+        puts "example: crystal_debug on"
+        return
+    }
+    if {[lindex $args 0] == "on"} {
+        set ::Crystallography::printDebug 1
+    } elseif {[lindex $args 0] == "off"} {
+        set ::Crystallography::printDebug 0
+    }
 }
 
 ##########################################
@@ -176,11 +187,11 @@ proc crystal_debug {args} {
 # testing of the plugin.
 # 
 proc check_norm {} {
-    # NOTE: using molinfo 0 instead of molinfo $currentMol !!
-  set rot [molinfo 0 get rotate_matrix]
-  for {set i 0} {$i < 3} {incr i} {
-    puts [vecdot [lindex $rot 0 $i] [lindex $rot 0 $i]]
-  } 
+# NOTE: using molinfo 0 instead of molinfo $currentMol !!
+    set rot [molinfo 0 get rotate_matrix]
+    for {set i 0} {$i < 3} {incr i} {
+        puts [vecdot [lindex $rot 0 $i] [lindex $rot 0 $i]]
+    } 
 }
 
 #############################################################################################
@@ -237,20 +248,20 @@ proc _cofactor3 {matrix i j} {
 
 # this converts a 3x3 matrix to a 4x4 matrix (adding 'translation') 
 proc matrix3to4 {mat} {
-  lset mat 0 [linsert [lindex $mat 0] end 0]
-  lset mat 1 [linsert [lindex $mat 1] end 0]
-  lset mat 2 [linsert [lindex $mat 2] end 0]
-  lappend mat {0 0 0 1}
-  return $mat
+    lset mat 0 [linsert [lindex $mat 0] end 0]
+    lset mat 1 [linsert [lindex $mat 1] end 0]
+    lset mat 2 [linsert [lindex $mat 2] end 0]
+    lappend mat {0 0 0 1}
+    return $mat
 }
 
 # this converts a 4x4 matrix to a 3x3 matrix (removing 'translation') 
 proc matrix4to3 {mat} {  
-  lset mat 0 [lrange [lindex $mat 0] 0 end-1]
-  lset mat 1 [lrange [lindex $mat 1] 0 end-1]
-  lset mat 2 [lrange [lindex $mat 2] 0 end-1]
-  set mat [lrange $mat 0 end-1]
-  return $mat
+    lset mat 0 [lrange [lindex $mat 0] 0 end-1]
+    lset mat 1 [lrange [lindex $mat 1] 0 end-1]
+    lset mat 2 [lrange [lindex $mat 2] 0 end-1]
+    set mat [lrange $mat 0 end-1]
+    return $mat
 }
 
 #############################################################################################
@@ -260,57 +271,57 @@ proc matrix4to3 {mat} {
 package provide crystallography 1.0
 
 namespace eval ::Crystallography:: {
-  
-  puts "DEBUG: init Crystallography"
-  
-  set listenersEnabled 0     ;# whether the event listeners (Tcl "tracers") are activated or not
-  #set crystallographyState off
-  
-  set darkColor black
-  set lightColor white
-  
-  set crystColor $darkColor   ;# use a dark foreground color? 
-  set canvasMol -1                 ;# mol in which the drawing is done
-  set canvasMolScale 1.            ;# scale of the canvas mol
-  array set displaySize {x 1 y 1 z 1}    ;# size of window
-  set latticeParam { 0 0 0 0 0 0 }
-  set unitCellVol 0                ;# unit cell volume in Ang**3
-  set unitCellValid 0			   ;# molecule has unit cell data?
-  set pbcChanged 0                 ;# track unitcell
-  set orientationChanged 0         ;# track orientation
-  set printDebug 0                 ;# print debug messages or not
-  set currentFrame -1		       ;# 
 
-  set currentMol [molinfo top]     ;# mol of study
-  if { $currentMol == -1 } { set currentMol "none" }
-  set previousMol $currentMol
-  trace add variable ::Crystallography::currentMol write ::Crystallography::currentMolChanged
+    puts "DEBUG: init Crystallography"
 
-  # 4x4 transformation matrix in cartesian coordinates:
-  set unitCell {{ 0 0 0 0 } { 0 0 0 0 } { 0 0 0 0 } { 0 0 0 1 }}
-	
-  # inverse matrix:
-  set unitCellInv {{ 0 0 0 0 } { 0 0 0 0 } { 0 0 0 0 } { 0 0 0 1 }}  
-  
-  # Drawing settings:
-  set drawCrystAxes 0
-  trace add variable ::Crystallography::drawCrystAxes write ::Crystallography::drawSettingsChanged
-  set crystAxesScale 100.
-  trace add variable ::Crystallography::crystAxesScale write ::Crystallography::drawSettingsChanged
-  set crystAxesLoc "lower right"
-  trace add variable ::Crystallography::crystAxesLoc write ::Crystallography::drawSettingsChanged
+    set listenersEnabled 0     ;# whether the event listeners (Tcl "tracers") are activated or not
+    #set crystallographyState off
 
-  set drawViewVectors 0
-  trace add variable ::Crystallography::drawViewVectors write ::Crystallography::drawSettingsChanged
-  set viewVectorsScale 100.
-  trace add variable ::Crystallography::viewVectorsScale write ::Crystallography::drawSettingsChanged
-  set viewVectorsLoc "lower left"
-  trace add variable ::Crystallography::viewVectorsLoc write ::Crystallography::drawSettingsChanged
+    set darkColor black
+    set lightColor white
 
-  array set posLowerLeft {x -0.90 y -0.90}
-  array set posUpperLeft {x -0.90 y 0.90}
-  array set posLowerRight {x 0.90 y -0.90}
-  array set posUpperRight {x 0.90 y 0.90}
+    set crystColor $darkColor   ;# use a dark foreground color? 
+    set canvasMol -1                 ;# mol in which the drawing is done
+    set canvasMolScale 1.            ;# scale of the canvas mol
+    array set displaySize {x 1 y 1 z 1}    ;# size of window
+    set latticeParam { 0 0 0 0 0 0 }
+    set unitCellVol 0                ;# unit cell volume in Ang**3
+    set unitCellValid 0			   ;# molecule has unit cell data?
+    set pbcChanged 0                 ;# track unitcell
+    set orientationChanged 0         ;# track orientation
+    set printDebug 0                 ;# print debug messages or not
+    set currentFrame -1		       ;# 
+
+    set currentMol [molinfo top]     ;# mol of study
+    if { $currentMol == -1 } { set currentMol "none" }
+    set previousMol $currentMol
+    trace add variable ::Crystallography::currentMol write ::Crystallography::currentMolChanged
+
+    # 4x4 transformation matrix in cartesian coordinates:
+    set unitCell {{ 0 0 0 0 } { 0 0 0 0 } { 0 0 0 0 } { 0 0 0 1 }}
+
+    # inverse matrix:
+    set unitCellInv {{ 0 0 0 0 } { 0 0 0 0 } { 0 0 0 0 } { 0 0 0 1 }}  
+
+    # Drawing settings:
+    set drawCrystAxes 0
+    trace add variable ::Crystallography::drawCrystAxes write ::Crystallography::drawSettingsChanged
+    set crystAxesScale 100.
+    trace add variable ::Crystallography::crystAxesScale write ::Crystallography::drawSettingsChanged
+    set crystAxesLoc "lower right"
+    trace add variable ::Crystallography::crystAxesLoc write ::Crystallography::drawSettingsChanged
+
+    set drawViewVectors 0
+    trace add variable ::Crystallography::drawViewVectors write ::Crystallography::drawSettingsChanged
+    set viewVectorsScale 100.
+    trace add variable ::Crystallography::viewVectorsScale write ::Crystallography::drawSettingsChanged
+    set viewVectorsLoc "lower left"
+    trace add variable ::Crystallography::viewVectorsLoc write ::Crystallography::drawSettingsChanged
+
+    array set posLowerLeft {x -0.90 y -0.90}
+    array set posUpperLeft {x -0.90 y 0.90}
+    array set posLowerRight {x 0.90 y -0.90}
+    array set posUpperRight {x 0.90 y 0.90}
 }
 
 
@@ -320,161 +331,161 @@ proc ::Crystallography::debug {str} {
 }
 
 proc ::Crystallography::update {} {
-  variable currentMol
-  variable canvasMol
-  variable canvasMolScale
-  variable displaySize  
-  variable drawCrystAxes
-  variable drawViewVectors
-  variable pbcChanged
-  variable orientationChanged
-  variable crystColor
-  variable unitCellValid
-  
-  # Update drawings
-  #debug " UPDATE"
-  if {$drawCrystAxes || $drawViewVectors} {
-    if {$pbcChanged || $orientationChanged} {
-      # clear canvas
-      debug "Clearing canvas"
-      graphics $canvasMol delete all
-      graphics $canvasMol material Opaque
-      graphics $canvasMol color $crystColor
+    variable currentMol
+    variable canvasMol
+    variable canvasMolScale
+    variable displaySize  
+    variable drawCrystAxes
+    variable drawViewVectors
+    variable pbcChanged
+    variable orientationChanged
+    variable crystColor
+    variable unitCellValid
+
+    # Update drawings
+    #debug " UPDATE"
+    if {$drawCrystAxes || $drawViewVectors} {
+        if {$pbcChanged || $orientationChanged} {
+        # clear canvas
+            debug "Clearing canvas"
+            graphics $canvasMol delete all
+            graphics $canvasMol material Opaque
+            graphics $canvasMol color $crystColor
+        }
     }
-  }
-  # check if a molecule has been selected  
-  if { [catch { molinfo $currentMol get id } ] } {
+    # check if a molecule has been selected  
+    if { [catch { molinfo $currentMol get id } ] } {
     # Try to get top molecule:
     if { [catch { molinfo top get id } top_id ] } {
-      debug "Error: no molecule loaded"
-      return
+        debug "Error: no molecule loaded"
+        return
     }
     # haz it atmoz?
     if {[molinfo top get numatoms] == 0 } {
-      debug "Error: no atoms in top mol"
-      return
+        debug "Error: no atoms in top mol"
+        return
     }
     # haz it unitcell?
     if {[lindex [pbc get] 0] == 0 } {
-      debug "Error: no unit cell infor in top mol"
-      return
+        debug "Error: no unit cell infor in top mol"
+        return
     }
     debug "Auto-setting molecule: $top_id"
     set currentMol $top_id
-  }
+}
 
-  # check if PBCs changed
-  set pbcChanged [read_pbc]
+# check if PBCs changed
+set pbcChanged [read_pbc]
 
-  if { $unitCellValid == 0} {
+if { $unitCellValid == 0} {
     debug "no unit cell information found"
     return
-  }  
+}  
 
-  # Update drawings
-  if {$drawCrystAxes || $drawViewVectors} {
-      if {$pbcChanged || $orientationChanged} {
-          set orientationChanged 0
+# Update drawings
+if {$drawCrystAxes || $drawViewVectors} {
+if {$pbcChanged || $orientationChanged} {
+set orientationChanged 0
 
-    # re-orient canvas
-    molinfo $canvasMol set center_matrix [list [transidentity]]
-    molinfo $canvasMol set rotate_matrix [list [transidentity]]
-    molinfo $canvasMol set global_matrix [list [transidentity]]
-    molinfo $canvasMol set scale_matrix  [molinfo $currentMol get scale_matrix]  
-    set canvasMolScale [lindex [molinfo $currentMol get scale_matrix] 0 0 0]
+# re-orient canvas
+molinfo $canvasMol set center_matrix [list [transidentity]]
+molinfo $canvasMol set rotate_matrix [list [transidentity]]
+molinfo $canvasMol set global_matrix [list [transidentity]]
+molinfo $canvasMol set scale_matrix  [molinfo $currentMol get scale_matrix]  
+set canvasMolScale [lindex [molinfo $currentMol get scale_matrix] 0 0 0]
 
-    # read display size
-    set canvasMolScale [lindex [molinfo $canvasMol get scale_matrix] 0 0 0]
-    set displaySize(y) [expr 0.25*[display get height]/$canvasMolScale]
-    set displaySize(x) [expr $displaySize(y)*[lindex [display get size] 0]/[lindex [display get size] 1]]
-    if [string equal [display get projection] "Orthographic"] {
-      set displaySize(z) [expr (2.-[display get nearclip]-0.001)/$canvasMolScale]
-    } else {
-      set displaySize(z) 0.
-    }
-    
-    #set disp "$displaySize(x) $displaySize(y) $displaySize(z)"
-    #puts "D: $disp"
-    
-    # and draw
-    if {$drawCrystAxes} draw_CrystallographicAxes
-    if {$drawViewVectors} draw_ViewVectors
-    }
+# read display size
+set canvasMolScale [lindex [molinfo $canvasMol get scale_matrix] 0 0 0]
+set displaySize(y) [expr 0.25*[display get height]/$canvasMolScale]
+set displaySize(x) [expr $displaySize(y)*[lindex [display get size] 0]/[lindex [display get size] 1]]
+if [string equal [display get projection] "Orthographic"] {
+    set displaySize(z) [expr (2.-[display get nearclip]-0.001)/$canvasMolScale]
+} else {
+    set displaySize(z) 0.
+}
+
+#set disp "$displaySize(x) $displaySize(y) $displaySize(z)"
+#puts "D: $disp"
+
+# and draw
+if {$drawCrystAxes} draw_CrystallographicAxes
+if {$drawViewVectors} draw_ViewVectors
+}
   }
 
 }
 
 proc ::Crystallography::read_pbc {} {
-  variable unitCell
-  variable unitCellInv
-  variable unitCellVol
-  variable latticeParam
-  variable currentMol
-  variable unitCellValid
-  
-  set p [ lindex [ pbc get -molid $currentMol ] 0] 
-  if {$p == $latticeParam} { return 0 }    ;# nothing changed, no need to continue
-  
-  set latticeParam $p
-  debug "Got new lattice parameters:"
-  debug "$latticeParam"
-  if {"[lindex $p 0]" == "0"} {
-      debug "no unit cell info found for the selected molecule"
-      set unitCellValid 0
-      return 1
-  }
-  set unitCellValid 1
-  
-  # [pbc get] returns { { a b c alpha beta gamma } }
-  set a [lindex $p 0] 
-  set b [lindex $p 1] 
-  set c [lindex $p 2]  
-  set alpha [::util::deg2rad [lindex $p 3]]
-  set beta [::util::deg2rad [lindex $p 4]]
-  set gamma [::util::deg2rad [lindex $p 5]]
+    variable unitCell
+    variable unitCellInv
+    variable unitCellVol
+    variable latticeParam
+    variable currentMol
+    variable unitCellValid
 
-  # Unit cell volume:
-  set unitCellVol [ expr $a*$b*$c*sqrt( 1 - cos($alpha)**2 - cos($beta)**2 - cos($gamma)**2 + 2*cos($alpha)*cos($beta)*cos($gamma) ) ]
-  
-  # a vector:
-  lset unitCell 0 0 $a 
-  lset unitCell 1 0 0 
-  lset unitCell 2 0 0 
+    set p [ lindex [ pbc get -molid $currentMol ] 0] 
+    if {$p == $latticeParam} { return 0 }    ;# nothing changed, no need to continue
 
-  # b vector:
-  lset unitCell 0 1 [ expr $b*cos($gamma) ] 
-  lset unitCell 1 1 [ expr $b*sin($gamma) ] 
-  lset unitCell 2 1 0 
-  
-  # c vector:
-  lset unitCell 0 2 [ expr $c*cos($beta) ] 
-  lset unitCell 1 2 [ expr $c*cos($alpha)-cos($beta)*cos($gamma)/sin($gamma) ] 
-  lset unitCell 2 2 [ expr $unitCellVol/($a*$b*sin($gamma)) ] 
-  
-  set unitCellInv [ matrix3to4 [ mat3_inverse [ matrix4to3 $unitCell ] ] ]
-  return 1
-  
+    set latticeParam $p
+    debug "Got new lattice parameters:"
+    debug "$latticeParam"
+    if {"[lindex $p 0]" == "0"} {
+        debug "no unit cell info found for the selected molecule"
+        set unitCellValid 0
+        return 1
+    }
+    set unitCellValid 1
+
+    # [pbc get] returns { { a b c alpha beta gamma } }
+    set a [lindex $p 0] 
+    set b [lindex $p 1] 
+    set c [lindex $p 2]  
+    set alpha [::util::deg2rad [lindex $p 3]]
+    set beta [::util::deg2rad [lindex $p 4]]
+    set gamma [::util::deg2rad [lindex $p 5]]
+
+    # Unit cell volume:
+    set unitCellVol [ expr $a*$b*$c*sqrt( 1 - cos($alpha)**2 - cos($beta)**2 - cos($gamma)**2 + 2*cos($alpha)*cos($beta)*cos($gamma) ) ]
+
+    # a vector:
+    lset unitCell 0 0 $a 
+    lset unitCell 1 0 0 
+    lset unitCell 2 0 0 
+
+    # b vector:
+    lset unitCell 0 1 [ expr $b*cos($gamma) ] 
+    lset unitCell 1 1 [ expr $b*sin($gamma) ] 
+    lset unitCell 2 1 0 
+
+    # c vector:
+    lset unitCell 0 2 [ expr $c*cos($beta) ] 
+    lset unitCell 1 2 [ expr $c*cos($alpha)-cos($beta)*cos($gamma)/sin($gamma) ] 
+    lset unitCell 2 2 [ expr $unitCellVol/($a*$b*sin($gamma)) ] 
+
+    set unitCellInv [ matrix3to4 [ mat3_inverse [ matrix4to3 $unitCell ] ] ]
+    return 1
+
 }
 
 proc ::Crystallography::vecproj { u v } {
-  if {abs([vecdot $u $v]) < 1e-16} {
-  	puts "Error in ::Crystallography::vecproj: Vectors u anv v are orthogonal"
-  }
-  return [vecscale [expr [vecdot $v $u] / [vecdot $u $u]] $u]
+    if {abs([vecdot $u $v]) < 1e-16} {
+        puts "Error in ::Crystallography::vecproj: Vectors u anv v are orthogonal"
+    }
+    return [vecscale [expr [vecdot $v $u] / [vecdot $u $u]] $u]
 }
 
 proc ::Crystallography::cryst2cart { vec } {
-  variable unitCell
-  variable currentMol
-  if {$currentMol == -1} return
-  return [vecnorm [coordtrans $unitCell $vec ]]
+    variable unitCell
+    variable currentMol
+    if {$currentMol == -1} return
+    return [vecnorm [coordtrans $unitCell $vec ]]
 }
 
 proc ::Crystallography::cart2cryst { vec } {
-  variable unitCellInv
-  variable currentMol
-  if {$currentMol == -1} return
-  return [ coordtrans $unitCellInv $vec ]
+    variable unitCellInv
+    variable currentMol
+    if {$currentMol == -1} return
+    return [ coordtrans $unitCellInv $vec ]
 }
 
 # To specify the view uniquely, two orthogonal vectors are needed. 
@@ -483,86 +494,86 @@ proc ::Crystallography::cart2cryst { vec } {
 # To view along the 110 (z vector) and automaticly calculate y (non-uniquely!):
 # set_view_direction {1 1 0}
 proc ::Crystallography::set_view_direction { args } {
-  variable unitCell
-  variable unitCellInv
-  variable currentMol
-  variable orientationChanged
-  if {$currentMol == -1} return
-  
-  # set z vector (projection vector)
-  if {[lindex $args 0] == [veczero]} { puts "What is life like along the zero vector? Perhaps mathematicians know?"; return; }
-  set z_vec [ cryst2cart [lindex $args 0] ]
-  
-  # set y vector ("upwards" vector)
-  if { [llength $args] > 1 } {
-    set y_vec [ cryst2cart [lindex $args 1] ]
-  } else {
-    set y_vec [ cryst2cart {0 0 1} ]   ;# hmm, would some qualified guess be better ?
-  }
-  
-  # Check if z and y are orthogonal
-  set y_ok 1
-  if { abs([vecdot $z_vec $y_vec]) > 1e-2} {
-     debug "y and z are not orthogonal"
-    if {[llength $args] > 1} {
-      # TODO: implement a non-GUI alternative? something like gets stdin answer
-      set answer [tk_messageBox -message "An upward vector non-orthogonal ([expr abs([vecdot $z_vec $y_vec])]) to the projection vector will give the molecule a stretched, rather peculiar look. Do you want to make the upward vector orthogonal to the projection vector?" -type yesno -default yes -icon warning]
-      switch -- $answer {
-        yes { 
-          set y_ok 0
-        }
-      }
+    variable unitCell
+    variable unitCellInv
+    variable currentMol
+    variable orientationChanged
+    if {$currentMol == -1} return
+
+    # set z vector (projection vector)
+    if {[lindex $args 0] == [veczero]} { puts "What is life like along the zero vector? Perhaps mathematicians know?"; return; }
+    set z_vec [ cryst2cart [lindex $args 0] ]
+
+    # set y vector ("upwards" vector)
+    if { [llength $args] > 1 } {
+        set y_vec [ cryst2cart [lindex $args 1] ]
     } else {
-      set y_ok 0
+        set y_vec [ cryst2cart {0 0 1} ]   ;# hmm, would some qualified guess be better ?
     }
-  }
-  # Check if z and y are parallel
-  if { abs([vecdot $z_vec $y_vec]) > 1-1e-10} {
-     debug "y and z are parallel"
-     # Define new y vector 
-     set y_vec {0 1 0}
-  }
-  if { abs([vecdot $z_vec $y_vec]) > 1-1e-10 } {
-     set y_vec {1 0 0}
-  }
-  if { abs([vecdot $z_vec $y_vec]) > 1-1e-10 } {
-     set y_vec {0 0 1}
-  }
-  if { abs([vecdot $z_vec $y_vec]) > 1-1e-10 } {
-	puts "Error: z and y are parallel!"
-  }
 
-  if { $y_ok == 0 } {
+    # Check if z and y are orthogonal
+    set y_ok 1
+    if { abs([vecdot $z_vec $y_vec]) > 1e-2} {
+        debug "y and z are not orthogonal"
+        if {[llength $args] > 1} {
+        # TODO: implement a non-GUI alternative? something like gets stdin answer
+            set answer [tk_messageBox -message "An upward vector non-orthogonal ([expr abs([vecdot $z_vec $y_vec])]) to the projection vector will give the molecule a stretched, rather peculiar look. Do you want to make the upward vector orthogonal to the projection vector?" -type yesno -default yes -icon warning]
+            switch -- $answer {
+                yes { 
+                    set y_ok 0
+                }
+            }
+        } else {
+            set y_ok 0
+        }
+    }
+    # Check if z and y are parallel
+    if { abs([vecdot $z_vec $y_vec]) > 1-1e-10} {
+        debug "y and z are parallel"
+        # Define new y vector 
+        set y_vec {0 1 0}
+    }
+    if { abs([vecdot $z_vec $y_vec]) > 1-1e-10 } {
+        set y_vec {1 0 0}
+    }
+    if { abs([vecdot $z_vec $y_vec]) > 1-1e-10 } {
+        set y_vec {0 0 1}
+    }
+    if { abs([vecdot $z_vec $y_vec]) > 1-1e-10 } {
+        puts "Error: z and y are parallel!"
+    }
+
+    if { $y_ok == 0 } {
     # subtract from y_vec the projection of y_vec onto z_vec (Gram Schmidt orthogonalization)
-    
-    set y_vec [vecnorm [ vecsub $y_vec [vecproj $z_vec $y_vec] ]]
 
-    #set b [ coordtrans $unitCell_inv $upvec ]
-    
-    # The GUI should have a listener we could poll
-		#set upvec_0 [lindex $upback 0]
-		#set upvec_1 [lindex $upback 1]
-		#set upvec_2 [lindex $upback 2]
-  }
-  
-  # set x vector ("rightwards" vector)
-  set x_vec [vecnorm [veccross $y_vec $z_vec]]
-  
-  # Define new 4x4 rotation matrix...
-  set rot "{{$x_vec 0} {$y_vec 0} {$z_vec 0} {0 0 0 1}}"
-  
-  # ... and apply it
-  #display resetview
-  foreach molid [molinfo list] {
+        set y_vec [vecnorm [ vecsub $y_vec [vecproj $z_vec $y_vec] ]]
+
+        #set b [ coordtrans $unitCell_inv $upvec ]
+
+        # The GUI should have a listener we could poll
+        #set upvec_0 [lindex $upback 0]
+        #set upvec_1 [lindex $upback 1]
+        #set upvec_2 [lindex $upback 2]
+    }
+
+    # set x vector ("rightwards" vector)
+    set x_vec [vecnorm [veccross $y_vec $z_vec]]
+
+    # Define new 4x4 rotation matrix...
+    set rot "{{$x_vec 0} {$y_vec 0} {$z_vec 0} {0 0 0 1}}"
+
+    # ... and apply it
+    #display resetview
+    foreach molid [molinfo list] {
     # Perhaps we should exclude molecules that are not real molecules (that contain no atoms?)
-    molinfo $molid set rotate_matrix $rot
-  }
-  #redraw
-  set orientationChanged 1
-  update
+        molinfo $molid set rotate_matrix $rot
+    }
+    #redraw
+    set orientationChanged 1
+    update
 
-  # update gui if present
-  if { ![catch {package present crystallography_gui}] } ::Crystallography::GUI::update_gui
+    # update gui if present
+    if { ![catch {package present crystallography_gui}] } ::Crystallography::GUI::update_gui
 }
 
 
@@ -572,157 +583,157 @@ proc ::Crystallography::set_view_direction { args } {
 #############################################################################################
 
 proc ::Crystallography::currentMolChanged {args} {
-  variable currentMol
-  variable previousMol
-  if {$previousMol != $currentMol} {
-    debug ">>>>>>>>>>>> Current mol changed from $previousMol to $currentMol"
-    set previousMol $currentMol
-    drawSettingsChanged
-  }  
+    variable currentMol
+    variable previousMol
+    if {$previousMol != $currentMol} {
+        debug ">>>>>>>>>>>> Current mol changed from $previousMol to $currentMol"
+        set previousMol $currentMol
+        drawSettingsChanged
+    }  
 }
 
 proc ::Crystallography::drawSettingsChanged {args} {
-  variable drawCrystAxes
-  variable drawViewVectors
-  variable orientationChanged
-  debug "drawSettingsChanged"
-  if {$drawCrystAxes || $drawViewVectors} {
-    check_canvas
-    enable_listeners
-    set orientationChanged 1
-    update
-  } else {
-    disable_listeners
-  }  
+    variable drawCrystAxes
+    variable drawViewVectors
+    variable orientationChanged
+    debug "drawSettingsChanged"
+    if {$drawCrystAxes || $drawViewVectors} {
+        check_canvas
+        enable_listeners
+        set orientationChanged 1
+        update
+    } else {
+        disable_listeners
+    }  
 }
 
 proc ::Crystallography::check_canvas {} {
-  variable canvasMol
-  variable currentMol
-  if {![catch {molinfo $canvasMol get id}]} return   ;# Canvas exists
-  debug ">>>>>>>>>>>> Creating canvas"
+    variable canvasMol
+    variable currentMol
+    if {![catch {molinfo $canvasMol get id}]} return   ;# Canvas exists
+    debug ">>>>>>>>>>>> Creating canvas"
 
-  # Create canvas mol for drawing:
-  set canvasMol [mol new]
-  mol rename $canvasMol "Crystallography Canvas"
+    # Create canvas mol for drawing:
+    set canvasMol [mol new]
+    mol rename $canvasMol "Crystallography Canvas"
 
-  # Fixes the drawing canvas "molecule". This makes the canvas more stable, but if 
-  # the molecule get out of view for some reason, it's harder to get it back into view.
-  # This requires some testing.
-  # mol fix $canvasMol
+    # Fixes the drawing canvas "molecule". This makes the canvas more stable, but if 
+    # the molecule get out of view for some reason, it's harder to get it back into view.
+    # This requires some testing.
+    # mol fix $canvasMol
 
-  if {$currentMol != "none" && $currentMol >= 0} {
-    mol top $currentMol
-    molinfo $canvasMol set scale_matrix [molinfo $currentMol get scale_matrix]  
-  }
-  debug " ok"
+    if {$currentMol != "none" && $currentMol >= 0} {
+        mol top $currentMol
+        molinfo $canvasMol set scale_matrix [molinfo $currentMol get scale_matrix]  
+    }
+    debug " ok"
 }
 
 proc ::Crystallography::enable_listeners {args} {
-  variable listenersEnabled
-  variable crystallographyState
-  variable currentMol
-  variable canvasMol
+    variable listenersEnabled
+    variable crystallographyState
+    variable currentMol
+    variable canvasMol
 
-  if {$listenersEnabled} return                        ;# already active
-  #if {[catch {molinfo $currentMol get name}]} return   ;# no molecules loaded yet
+    if {$listenersEnabled} return                        ;# already active
+    #if {[catch {molinfo $currentMol get name}]} return   ;# no molecules loaded yet
 
-  debug "enable listeners"
-  
-  trace add variable ::vmd_logfile write ::Crystallography::on_vmd_event
-  trace add variable ::vmd_frame write ::Crystallography::on_vmd_event
-  trace add variable ::vmd_quit write ::Crystallography::on_vmd_quit
-  trace add variable ::vmd_initialize_structure write ::Crystallography::on_vmd_event 
-  
-  set listenersEnabled 1
+    debug "enable listeners"
 
-  reset_colors  
+    trace add variable ::vmd_logfile write ::Crystallography::on_vmd_event
+    trace add variable ::vmd_frame write ::Crystallography::on_vmd_event
+    trace add variable ::vmd_quit write ::Crystallography::on_vmd_quit
+    trace add variable ::vmd_initialize_structure write ::Crystallography::on_vmd_event 
+
+    set listenersEnabled 1
+
+    reset_colors  
 
 }
 
 proc ::Crystallography::disable_listeners {} {
-  variable listenersEnabled
-  variable canvasMol
+    variable listenersEnabled
+    variable canvasMol
 
-  if {$listenersEnabled == 0} return                    ;# already inactive
+    if {$listenersEnabled == 0} return                    ;# already inactive
 
-  debug "disable listeners"
+    debug "disable listeners"
 
-  trace remove variable ::vmd_logfile write ::Crystallography::on_vmd_event
-  trace remove variable ::vmd_frame write ::Crystallography::on_vmd_event
-  trace remove variable ::vmd_quit write ::Crystallography::on_vmd_quit
-  trace remove variable ::vmd_initialize_structure write ::Crystallography::on_vmd_event 
+    trace remove variable ::vmd_logfile write ::Crystallography::on_vmd_event
+    trace remove variable ::vmd_frame write ::Crystallography::on_vmd_event
+    trace remove variable ::vmd_quit write ::Crystallography::on_vmd_quit
+    trace remove variable ::vmd_initialize_structure write ::Crystallography::on_vmd_event 
 
-  catch {mol delete $canvasMol}
-  set listenersEnabled 0
+    catch {mol delete $canvasMol}
+    set listenersEnabled 0
 }
 
 proc ::Crystallography::on_vmd_event { args } {
-  variable orientationChanged
-  variable currentMol
-  variable currentFrame
-  
-  debug "EVENT: $args"
-  if {"[lindex $args 0]" == "vmd_initialize_structure"} {
-    debug "====================================== vmd_initialize_structure"
-    set orientationChanged 1
-    update
-  } elseif {"[lindex $args 0]" == "vmd_logfile"} {
-    debug [format "  Log entry: %s" $::vmd_logfile]
-    if {"$::vmd_logfile" == "exit"} {
-      debug "Crystallography plugin info) VMD is exiting"
-      return
-    }
+    variable orientationChanged
+    variable currentMol
+    variable currentFrame
 
-    # Check for display transforms
-    #
-    # Known bug: In VMD 1.9, 'display' commands such as 'display resize' aren't logged.
-    # I'm not sure how we should trace these
-    if {[string match "color *" $::vmd_logfile] || [string match "display *" $::vmd_logfile]} {
-      debug "Re-check background color"
-      reset_colors
-    }
-    if {[string match "rotate *" $::vmd_logfile] || [string match "translate *" $::vmd_logfile]
-        || [string match "scale *" $::vmd_logfile] || [string match "mol top *" $::vmd_logfile]
-        || [string match "color *" $::vmd_logfile] || [string match "display *" $::vmd_logfile]} {
-      # 
-      set orientationChanged 1
-      update
-    }
-  } elseif {"[lindex $args 0]" == "vmd_frame"} {
+    debug "EVENT: $args"
+    if {"[lindex $args 0]" == "vmd_initialize_structure"} {
+        debug "====================================== vmd_initialize_structure"
+        set orientationChanged 1
+        update
+    } elseif {"[lindex $args 0]" == "vmd_logfile"} {
+        debug [format "  Log entry: %s" $::vmd_logfile]
+        if {"$::vmd_logfile" == "exit"} {
+            debug "Crystallography plugin info) VMD is exiting"
+            return
+        }
+
+        # Check for display transforms
+        #
+        # Known bug: In VMD 1.9, 'display' commands such as 'display resize' aren't logged.
+        # I'm not sure how we should trace these
+        if {[string match "color *" $::vmd_logfile] || [string match "display *" $::vmd_logfile]} {
+            debug "Re-check background color"
+            reset_colors
+        }
+        if {[string match "rotate *" $::vmd_logfile] || [string match "translate *" $::vmd_logfile]
+            || [string match "scale *" $::vmd_logfile] || [string match "mol top *" $::vmd_logfile]
+            || [string match "color *" $::vmd_logfile] || [string match "display *" $::vmd_logfile]} {
+            # 
+            set orientationChanged 1
+            update
+        }
+    } elseif {"[lindex $args 0]" == "vmd_frame"} {
     # It appears like VMD calls vmd_frame for each drawing update. For example,
     # the command "rotate z by 1" will trigger vmd_frame up to 4 times if our 
     # plugin is active..
     if {$currentMol != "none"} {
-     set f [molinfo $currentMol get frame]
-     if {$f != $currentFrame} {
-      debug "  new frame: $f"
-      set currentFrame $f
-      update
-     }
+        set f [molinfo $currentMol get frame]
+        if {$f != $currentFrame} {
+            debug "  new frame: $f"
+            set currentFrame $f
+            update
+        }
     }
-  }
+}
 }
 
 proc ::Crystallography::on_vmd_quit { args } {
-  debug "Crystallography plugin info) Got vmd_quit event"
-  disable_Crystallography
+    debug "Crystallography plugin info) Got vmd_quit event"
+    disable_Crystallography
 }
 
 proc ::Crystallography::reset_colors {} {
-  variable crystColor
-  if [display get backgroundgradient] {
-    set backlight [eval vecadd [colorinfo rgb [color Display BackgroundBot]]]
-  } else {
-    set backlight [eval vecadd [colorinfo rgb [color Display Background]]]
-  }
-  if {$backlight <= 1.2} {
-    debug "  background is dark"
-    set crystColor $::Crystallography::lightColor
-  } else {
-    debug "  background is light"
-    set crystColor $::Crystallography::darkColor
-  }
+    variable crystColor
+    if [display get backgroundgradient] {
+        set backlight [eval vecadd [colorinfo rgb [color Display BackgroundBot]]]
+    } else {
+        set backlight [eval vecadd [colorinfo rgb [color Display Background]]]
+    }
+    if {$backlight <= 1.2} {
+        debug "  background is dark"
+        set crystColor $::Crystallography::lightColor
+    } else {
+        debug "  background is light"
+        set crystColor $::Crystallography::darkColor
+    }
 }
 
 ############################################################
@@ -740,32 +751,32 @@ proc ::Crystallography::reset_colors {} {
 #   -resolution $res
 #
 proc ::Crystallography::draw_3d_arrow {args} {
-	variable canvasMol
+    variable canvasMol
     set rad 0.05
-	set tiplen 0.3
+    set tiplen 0.3
     set res 10
 
     # Parse arguments:
     set start [lindex $args 0]
     set vec [lindex $args 1]
-	for { set argnum 2 } { $argnum < [llength $args] } { incr argnum } {
-	    set arg [ lindex $args $argnum ]
-	    set val [ lindex $args [expr $argnum + 1]]
-	    switch -- $arg {
-			"-tiplength"   { set tiplen $val; incr argnum }
-			"-radius"      { set rad $val; incr argnum }
-			"-resolution"  { set res $val; incr argnum }
-			default { error "error: crystallography: unknown option: $arg" }
-	    }
-	}
+    for { set argnum 2 } { $argnum < [llength $args] } { incr argnum } {
+        set arg [ lindex $args $argnum ]
+        set val [ lindex $args [expr $argnum + 1]]
+        switch -- $arg {
+            "-tiplength"   { set tiplen $val; incr argnum }
+            "-radius"      { set rad $val; incr argnum }
+            "-resolution"  { set res $val; incr argnum }
+            default { error "error: crystallography: unknown option: $arg" }
+        }
+    }
 
     set end [vecadd $start $vec]
     set middle [vecadd $start [vecscale [expr {1.0-$tiplen}] [vecsub $end $start]]]
     set rad [expr {$rad*[veclength $vec]}]
-    
+
     #puts "start: $start, middle: $middle, end: $end"
-	graphics $canvasMol cylinder $start $middle radius $rad resolution $res filled yes
-	graphics $canvasMol cone $middle $end radius [expr $rad * 2.3] resolution $res
+    graphics $canvasMol cylinder $start $middle radius $rad resolution $res filled yes
+    graphics $canvasMol cone $middle $end radius [expr $rad * 2.3] resolution $res
 
 }
 
@@ -773,28 +784,28 @@ proc ::Crystallography::draw_3d_arrow {args} {
 # draw_2d_arrow origin vector [label] [thickness]
 proc ::Crystallography::draw_2d_arrow {args} {
     variable canvasMol
-  	set tiplen 0.2
+    set tiplen 0.2
     set thickness 2.
 
     set start [lindex $args 0]
     set vec [lindex $args 1]
     for { set argnum 2 } { $argnum < [llength $args] } { incr argnum } {
-	    set arg [ lindex $args $argnum ]
-	    set val [ lindex $args [expr $argnum + 1]]
-	    switch -- $arg {
-			"-tiplength"   { set tiplen $val; incr argnum }
-			"-thickness"   { set thickness $val; incr argnum }
-			default { error "error: crystallography: unknown option: $arg" }
-	    }
-	}
-	set thickness_int [expr {round($thickness)}]        ;# the line drawing function is limited to integer widths
+        set arg [ lindex $args $argnum ]
+        set val [ lindex $args [expr $argnum + 1]]
+        switch -- $arg {
+            "-tiplength"   { set tiplen $val; incr argnum }
+            "-thickness"   { set thickness $val; incr argnum }
+            default { error "error: crystallography: unknown option: $arg" }
+        }
+    }
+    set thickness_int [expr {round($thickness)}]        ;# the line drawing function is limited to integer widths
 
     set end [vecadd $start $vec]
     set middle [vecadd $start [vecscale [expr {1.0-$tiplen}] [vecsub $end $start]]]
 
     # draw arrowline:
     graphics $canvasMol line $start $end width $thickness_int
-  
+
     # draw arrowhead:
     set tip_r [ vectrans [transaxis z 45] [ vecscale -$tiplen $vec ] ]
     set tip_l [ vectrans [transaxis z -45] [ vecscale -$tiplen $vec ] ]
@@ -817,30 +828,30 @@ proc ::Crystallography::draw_2d_arrow {args} {
 proc ::Crystallography::draw_arrow_label {args} {
     variable canvasMol
     variable displaySize
-	set dist 0.2
-	set fontsize 1.0
-	set char_width 0.03			;# the empirical character width "constant" at unit fontsize 
+    set dist 0.2
+    set fontsize 1.0
+    set char_width 0.03			;# the empirical character width "constant" at unit fontsize 
 
     # Parse arguments:
     set start [lindex $args 0]
     set vec [lindex $args 1]
     set label [lindex $args 2]
     for { set argnum 3 } { $argnum < [llength $args] } { incr argnum } {
-	    set arg [ lindex $args $argnum ]
-	    set val [ lindex $args [expr $argnum + 1]]
-	    switch -- $arg {
-			"-fontsize"    { set fontsize $val; incr argnum }
-			"-distance"    { set dist $val; incr argnum }
-			default { error "error: crystallography: unknown option: $arg" }
-	    }
-	}
+        set arg [ lindex $args $argnum ]
+        set val [ lindex $args [expr $argnum + 1]]
+        switch -- $arg {
+            "-fontsize"    { set fontsize $val; incr argnum }
+            "-distance"    { set dist $val; incr argnum }
+            default { error "error: crystallography: unknown option: $arg" }
+        }
+    }
 
     set end [vecadd $start $vec]
-    
+
     # draw label (and try to more or less center-align it):
 
     set dist [vecscale $dist [lreplace $vec 2 2 0.0]] ;# x,y direction only, drop z direction
-    
+
     set cos_ang [expr {[vecdot "1 0 0" "$dist"] / [veclength "$dist"]}]   ;# [-1,1]
     set char_width [expr {$displaySize(z)*$fontsize*$char_width}]
     set str_width [expr {$char_width * [string length $label] }]
@@ -853,10 +864,10 @@ proc ::Crystallography::draw_arrow_label {args} {
     if {[set oos [expr {[lindex $lab_pos 0] + $str_width - 0.95*$displaySize(x)}]] > 0.} { 
         set lab_pos [vecadd $lab_pos "[expr {-$oos}] 0 0"] }
     graphics $canvasMol text $lab_pos "$label" thickness $fontsize size $fontsize
-    
+
     # Debug: Uncomment to visualize the quality of the pseudo-center-alignment:
     #graphics $canvasMol line "$lab_pos" [vecadd "$lab_pos" "$str_width 0 0"]
-    
+
     return $lab_pos
 }
 
@@ -877,222 +888,222 @@ proc ::Crystallography::draw_arrow_miller_label {args} {
     set char_width 0.03
     set thickness 2.
     set fontsize 1.0
-  
+
     # Parse arguments:
     set origin [lindex $args 0]
     set vec [lindex $args 1]
     set proj [lindex $args 2]
     for { set argnum 3 } { $argnum < [llength $args] } { incr argnum } {
-	    set arg [ lindex $args $argnum ]
-	    set val [ lindex $args [expr $argnum + 1]]
-	    switch -- $arg {
-			"-fontsize"    { set fontsize $val; incr argnum }
-			default { error "error: crystallography: unknown option: $arg" }
-	    }
-	}
+        set arg [ lindex $args $argnum ]
+        set val [ lindex $args [expr $argnum + 1]]
+        switch -- $arg {
+            "-fontsize"    { set fontsize $val; incr argnum }
+            default { error "error: crystallography: unknown option: $arg" }
+        }
+    }
 
     # Scale vector to integer values (e.g. [0.7 0 0.7] -> [1 0 1])
     set scale 1
     for {set j 0} {$j < 3} {incr j} {
-      set vlen [expr {abs([lindex $proj $j])}]
-      if { $vlen > 0.001 && $vlen < $scale } { 
-        set scale $vlen
-      }
+        set vlen [expr {abs([lindex $proj $j])}]
+        if { $vlen > 0.001 && $vlen < $scale } { 
+            set scale $vlen
+        }
     }
     set int_proj [vecscale [expr {1./$scale}] $proj]
-  
+
     set x [lindex $int_proj 0]
     set y [lindex $int_proj 1]
     set z [lindex $int_proj 2]
-  
-  #debug "V: $int_proj"
-  # Check if the vector is (more or less) along a crystal plane 
-  if { [expr {round($x*10)/10. == round($x)*1.}] &&
-       [expr {round($y*10)/10. == round($y)*1.}] &&
-       [expr {round($z*10)/10. == round($z)*1.}] } {
-    
-    # Hurray, it is! Then we convert the float coordinates into 
-    # integer ones and replace minuses by overbars to make the 
-    # output look like standard Miller notation.
-    set x [expr {round($x)}]
-    set y [expr {round($y)}]
-    set z [expr {round($z)}]
-    if {[set absx [expr {abs($x)}]] == $x} { set barx " " } else { set barx "_" }
-    if {[set absy [expr {abs($y)}]] == $y} { set bary " " } else { set bary "_" }
-    if {[set absz [expr {abs($z)}]] == $z} { set barz " " } else { set barz "_" }
-   
-    # Draw arrow with label:
-    set txt [format "\[%d%d%d\]" $absx $absy $absz ] 
-    set lab_pos [draw_arrow_label $origin $vec $txt -fontsize $fontsize]
 
-    # Add overbars:
-    set char_width [expr {$displaySize(z)*$fontsize*$char_width}]
-    set bar_pos [vecadd $lab_pos "[expr {-0.01*$char_width}] [expr {1.7*$char_width}] 0"]
-    graphics $canvasMol text $bar_pos " $barx$bary$barz " size $fontsize
+    #debug "V: $int_proj"
+    # Check if the vector is (more or less) along a crystal plane 
+    if { [expr {round($x*10)/10. == round($x)*1.}] &&
+         [expr {round($y*10)/10. == round($y)*1.}] &&
+         [expr {round($z*10)/10. == round($z)*1.}] } {
 
-  } else {
-    
-    # Otherwise, we just output the raw coordinates
-    set txt [ format "(% .2f % .2f % .2f)" [lindex $proj 0] [lindex $proj 1] [lindex $proj 2] ]
-    #graphics $canvasMol text [ vecmul $pos $disp ] "$txt" size [expr {.8*$fontsize}]
-    draw_arrow_label $origin $vec $txt -fontsize $fontsize
-  }
-  # Draw fixed arrows
-  #set lab_pos [vecadd $origin "[vecscale 1.2 $xvec]"]  ;# add some space
+         # Hurray, it is! Then we convert the float coordinates into 
+         # integer ones and replace minuses by overbars to make the 
+         # output look like standard Miller notation.
+        set x [expr {round($x)}]
+        set y [expr {round($y)}]
+        set z [expr {round($z)}]
+        if {[set absx [expr {abs($x)}]] == $x} { set barx " " } else { set barx "_" }
+        if {[set absy [expr {abs($y)}]] == $y} { set bary " " } else { set bary "_" }
+        if {[set absz [expr {abs($z)}]] == $z} { set barz " " } else { set barz "_" }
+
+        # Draw arrow with label:
+        set txt [format "\[%d%d%d\]" $absx $absy $absz ] 
+        set lab_pos [draw_arrow_label $origin $vec $txt -fontsize $fontsize]
+
+        # Add overbars:
+        set char_width [expr {$displaySize(z)*$fontsize*$char_width}]
+        set bar_pos [vecadd $lab_pos "[expr {-0.01*$char_width}] [expr {1.7*$char_width}] 0"]
+        graphics $canvasMol text $bar_pos " $barx$bary$barz " size $fontsize
+
+    } else {
+
+        # Otherwise, we just output the raw coordinates
+        set txt [ format "(% .2f % .2f % .2f)" [lindex $proj 0] [lindex $proj 1] [lindex $proj 2] ]
+        #graphics $canvasMol text [ vecmul $pos $disp ] "$txt" size [expr {.8*$fontsize}]
+        draw_arrow_label $origin $vec $txt -fontsize $fontsize
+    }
+    # Draw fixed arrows
+    #set lab_pos [vecadd $origin "[vecscale 1.2 $xvec]"]  ;# add some space
 }
 
 
 
 proc ::Crystallography::draw_CrystallographicAxes {} {
-  variable unitCell
-  variable currentMol
-  variable crystAxesScale
-  variable crystAxesLoc
-  variable posLowerLeft
-  variable posUpperLeft
-  variable posUpperRight
-  variable posLowerRight
-  variable displaySize
-  
-  set rot [lindex [molinfo $currentMol get rotate_matrix] 0]
+    variable unitCell
+    variable currentMol
+    variable crystAxesScale
+    variable crystAxesLoc
+    variable posLowerLeft
+    variable posUpperLeft
+    variable posUpperRight
+    variable posLowerRight
+    variable displaySize
 
-  set a [ vecnorm [list [lindex $unitCell 0 0] [lindex $unitCell 1 0] [lindex $unitCell 2 0]  [lindex $unitCell 3 0] ]]
-  set a_rot [vectrans $rot $a]
-  set a_x [lindex $a_rot 0]
-  set a_y [lindex $a_rot 1]
-  set a_z [lindex $a_rot 2]
+    set rot [lindex [molinfo $currentMol get rotate_matrix] 0]
 
-  set b [ vecnorm [list [lindex $unitCell 0 1] [lindex $unitCell 1 1] [lindex $unitCell 2 1]  [lindex $unitCell 3 1] ]]
-  set b_rot [vectrans $rot $b]
-  set b_x [lindex $b_rot 0]
-  set b_y [lindex $b_rot 1]
-  set b_z [lindex $b_rot 2]
+    set a [ vecnorm [list [lindex $unitCell 0 0] [lindex $unitCell 1 0] [lindex $unitCell 2 0]  [lindex $unitCell 3 0] ]]
+    set a_rot [vectrans $rot $a]
+    set a_x [lindex $a_rot 0]
+    set a_y [lindex $a_rot 1]
+    set a_z [lindex $a_rot 2]
 
-  set c [ vecnorm [list [lindex $unitCell 0 2] [lindex $unitCell 1 2] [lindex $unitCell 2 2]  [lindex $unitCell 3 2] ]]
-  set c_rot [vectrans $rot $c]
-  set c_x [lindex $c_rot 0]
-  set c_y [lindex $c_rot 1]
-  set c_z [lindex $c_rot 2]
+    set b [ vecnorm [list [lindex $unitCell 0 1] [lindex $unitCell 1 1] [lindex $unitCell 2 1]  [lindex $unitCell 3 1] ]]
+    set b_rot [vectrans $rot $b]
+    set b_x [lindex $b_rot 0]
+    set b_y [lindex $b_rot 1]
+    set b_z [lindex $b_rot 2]
+
+    set c [ vecnorm [list [lindex $unitCell 0 2] [lindex $unitCell 1 2] [lindex $unitCell 2 2]  [lindex $unitCell 3 2] ]]
+    set c_rot [vectrans $rot $c]
+    set c_x [lindex $c_rot 0]
+    set c_y [lindex $c_rot 1]
+    set c_z [lindex $c_rot 2]
 
 
-  set len [expr {0.2 * $crystAxesScale / 100.}]
-  #set thickness [expr {2. * $crystAxesScale / 100.}]
-  set fontsize [expr {$crystAxesScale / 100.}]
- 
-  switch "$crystAxesLoc" {
-    "lower left" { set origin_x $posLowerLeft(x); set origin_y $posLowerLeft(y); }
-    "upper left" { set origin_x $posUpperLeft(x); set origin_y $posUpperLeft(y); }
-    "upper right" { set origin_x $posUpperRight(x); set origin_y $posUpperRight(y); }
-    "lower right" { set origin_x $posLowerRight(x); set origin_y $posLowerRight(y); }
-    default { set origin_x 0; set origin_y 0; }
-  }
-  
-  # if out of screen, fix
-  if {[set oos [expr {$origin_x + $len*$a_x + 0.90}]] < 0.} { set origin_x [expr {$origin_x - $oos}] 
-  } elseif {[set oos [expr {$origin_x + $len*$a_x - 0.90}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
-  if {[set oos [expr {$origin_x + $len*$b_x + 0.90}]] < 0.} { set origin_x [expr {$origin_x - $oos}]
-  } elseif {[set oos [expr {$origin_x + $len*$b_x - 0.90}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
-  if {[set oos [expr {$origin_x + $len*$c_x + 0.90}]] < 0.} { set origin_x [expr {$origin_x - $oos}] 
-  } elseif {[set oos [expr {$origin_x + $len*$c_x - 0.90}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
+    set len [expr {0.2 * $crystAxesScale / 100.}]
+    #set thickness [expr {2. * $crystAxesScale / 100.}]
+    set fontsize [expr {$crystAxesScale / 100.}]
 
-  if {[set oos [expr {$origin_y + $len*$a_y + 0.90}]] < 0.} { set origin_y [expr {$origin_y - $oos}] 
-  } elseif {[set oos [expr {$origin_y + $len*$a_y - 0.90}]] > 0.} { set origin_y [expr {$origin_y - $oos}] }
-  if {[set oos [expr {$origin_y + $len*$b_y + 0.90}]] < 0.} { set origin_y [expr {$origin_y - $oos}] 
-  } elseif {[set oos [expr {$origin_y + $len*$b_y - 0.90}]] > 0.} { set origin_y [expr {$origin_y - $oos}] }
-  if {[set oos [expr {$origin_y + $len*$c_y + 0.90}]] < 0.} { set origin_y [expr {$origin_y - $oos}] 
-  } elseif {[set oos [expr {$origin_y + $len*$c_y - 0.90}]] > 0.} { set origin_y [expr {$origin_y - $oos}] }
+    switch "$crystAxesLoc" {
+        "lower left" { set origin_x $posLowerLeft(x); set origin_y $posLowerLeft(y); }
+        "upper left" { set origin_x $posUpperLeft(x); set origin_y $posUpperLeft(y); }
+        "upper right" { set origin_x $posUpperRight(x); set origin_y $posUpperRight(y); }
+        "lower right" { set origin_x $posLowerRight(x); set origin_y $posLowerRight(y); }
+        default { set origin_x 0; set origin_y 0; }
+    }
 
-  #draw_2d_arrow "$origin_x $origin_y 0" "[expr $len*$a_x] [expr $len*$a_y] 0" "a" $thickness
-  #draw_2d_arrow "$origin_x $origin_y 0" "[expr $len*$b_x] [expr $len*$b_y] 0" "b" $thickness
-  #draw_2d_arrow "$origin_x $origin_y 0" "[expr $len*$c_x] [expr $len*$c_y] 0" "c" $thickness
-  
-  set disp "$displaySize(x) $displaySize(y) $displaySize(z)"
-  
-  set origin [vecmul "$origin_x $origin_y 0" $disp]
-  set len [expr {$len * $displaySize(z)}]
+    # if out of screen, fix
+    if {[set oos [expr {$origin_x + $len*$a_x + 0.90}]] < 0.} { set origin_x [expr {$origin_x - $oos}] 
+    } elseif {[set oos [expr {$origin_x + $len*$a_x - 0.90}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
+    if {[set oos [expr {$origin_x + $len*$b_x + 0.90}]] < 0.} { set origin_x [expr {$origin_x - $oos}]
+    } elseif {[set oos [expr {$origin_x + $len*$b_x - 0.90}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
+    if {[set oos [expr {$origin_x + $len*$c_x + 0.90}]] < 0.} { set origin_x [expr {$origin_x - $oos}] 
+    } elseif {[set oos [expr {$origin_x + $len*$c_x - 0.90}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
 
-  # from length-4 to length-3 vectors, and scale to fixed size
-  set a [vecscale $len [lrange $a_rot 0 2]]
-  set b [vecscale $len [lrange $b_rot 0 2]]
-  set c [vecscale $len [lrange $c_rot 0 2]]
+    if {[set oos [expr {$origin_y + $len*$a_y + 0.90}]] < 0.} { set origin_y [expr {$origin_y - $oos}] 
+    } elseif {[set oos [expr {$origin_y + $len*$a_y - 0.90}]] > 0.} { set origin_y [expr {$origin_y - $oos}] }
+    if {[set oos [expr {$origin_y + $len*$b_y + 0.90}]] < 0.} { set origin_y [expr {$origin_y - $oos}] 
+    } elseif {[set oos [expr {$origin_y + $len*$b_y - 0.90}]] > 0.} { set origin_y [expr {$origin_y - $oos}] }
+    if {[set oos [expr {$origin_y + $len*$c_y + 0.90}]] < 0.} { set origin_y [expr {$origin_y - $oos}] 
+    } elseif {[set oos [expr {$origin_y + $len*$c_y - 0.90}]] > 0.} { set origin_y [expr {$origin_y - $oos}] }
 
-  draw_3d_arrow $origin $a
-  draw_3d_arrow $origin $b
-  draw_3d_arrow $origin $c
-  
-  # Draw labels for vectors whose projection in the xy-plane is longer than a minimum treshold:
-  if {[veclength [lrange $a 0 1]] > 0.1} { draw_arrow_label $origin $a "a" -fontsize $fontsize }
-  if {[veclength [lrange $b 0 1]] > 0.1} { draw_arrow_label $origin $b "b" -fontsize $fontsize }
-  if {[veclength [lrange $c 0 1]] > 0.1} { draw_arrow_label $origin $c "c" -fontsize $fontsize }
-  
+    #draw_2d_arrow "$origin_x $origin_y 0" "[expr $len*$a_x] [expr $len*$a_y] 0" "a" $thickness
+    #draw_2d_arrow "$origin_x $origin_y 0" "[expr $len*$b_x] [expr $len*$b_y] 0" "b" $thickness
+    #draw_2d_arrow "$origin_x $origin_y 0" "[expr $len*$c_x] [expr $len*$c_y] 0" "c" $thickness
+
+    set disp "$displaySize(x) $displaySize(y) $displaySize(z)"
+
+    set origin [vecmul "$origin_x $origin_y 0" $disp]
+    set len [expr {$len * $displaySize(z)}]
+
+    # from length-4 to length-3 vectors, and scale to fixed size
+    set a [vecscale $len [lrange $a_rot 0 2]]
+    set b [vecscale $len [lrange $b_rot 0 2]]
+    set c [vecscale $len [lrange $c_rot 0 2]]
+
+    draw_3d_arrow $origin $a
+    draw_3d_arrow $origin $b
+    draw_3d_arrow $origin $c
+
+    # Draw labels for vectors whose projection in the xy-plane is longer than a minimum treshold:
+    if {[veclength [lrange $a 0 1]] > 0.1} { draw_arrow_label $origin $a "a" -fontsize $fontsize }
+    if {[veclength [lrange $b 0 1]] > 0.1} { draw_arrow_label $origin $b "b" -fontsize $fontsize }
+    if {[veclength [lrange $c 0 1]] > 0.1} { draw_arrow_label $origin $c "c" -fontsize $fontsize }
+
 }
 
 proc ::Crystallography::draw_ViewVectors {} {
-  variable canvasMol
-  variable currentMol
-  variable canvasMolScale
-  variable canvasMol
-  variable unitCell
-  variable viewVectorsScale
-  variable viewVectorsLoc
-  variable posLowerLeft
-  variable posUpperLeft
-  variable posUpperRight
-  variable posLowerRight
-  variable displaySize
+    variable canvasMol
+    variable currentMol
+    variable canvasMolScale
+    variable canvasMol
+    variable unitCell
+    variable viewVectorsScale
+    variable viewVectorsLoc
+    variable posLowerLeft
+    variable posUpperLeft
+    variable posUpperRight
+    variable posLowerRight
+    variable displaySize
 
-  set len [expr {0.2 * $viewVectorsScale / 100.}]
-  set thickness [expr {2. * $viewVectorsScale / 100.}]
-  set fontsize [expr {$viewVectorsScale / 100.}]
-  
-  # Determine location
+    set len [expr {0.2 * $viewVectorsScale / 100.}]
+    set thickness [expr {2. * $viewVectorsScale / 100.}]
+    set fontsize [expr {$viewVectorsScale / 100.}]
 
-  set rot [molinfo $currentMol get rotate_matrix]
-  switch "$viewVectorsLoc" {
-    "lower left" { 
-        set origin "$posLowerLeft(x) $posLowerLeft(y) 1"
-        set xvec "1.0 0.0 0.0"                                 ;# rightwards
-        set xproj [cart2cryst [lindex $rot 0 0]]
-        set yvec "0.0 1.0 0.0"                                 ;# upwards
-        set yproj [cart2cryst [lindex $rot 0 1]]
-    }
-    "upper left" { 
-        set origin "$posUpperLeft(x) $posUpperLeft(y) 1"
-        set xvec "1.0 0.0 0.0"                                 ;# rightwards
-        set xproj [cart2cryst [lindex $rot 0 0]]
-        set yvec "0.0 -1.0 0.0"                                ;# downwards 
-        set yproj [cart2cryst [vecscale -1 [lindex $rot 0 1]]]
-    }
-    "upper right" { 
-        set origin "$posUpperRight(x) $posUpperRight(y) 1";
-        set xvec "-1.0 0.0 0.0"                                ;# leftwards 
-        set xproj [cart2cryst [vecscale -1 [lindex $rot 0 0]]]
-        set yvec "0.0 -1.0 0.0"                                ;# downwards 
-        set yproj [cart2cryst [vecscale -1 [lindex $rot 0 1]]]
-    }
-    "lower right" { 
-        set origin "$posLowerRight(x) $posLowerRight(y) 1" 
-        set xvec "-1.0 0.0 0.0"                                ;# leftwards 
-        set xproj [cart2cryst [vecscale -1 [lindex $rot 0 0]]]
-        set yvec "0.0 1.0 0.0"                                 ;# upwards
-        set yproj [cart2cryst [lindex $rot 0 1]]
-    }
-    default { set origin_x 0; set origin_y 0; }
-  }
-  
-  # Draw arrows
-  set disp "$displaySize(x) $displaySize(y) $displaySize(z)"
-  set len [expr {$len * $displaySize(z)}]
+    # Determine location
 
-  set origin [vecmul $origin $disp]
-  set xvec [vecscale $len $xvec]
-  set yvec [vecscale $len $yvec]
-  
-  draw_2d_arrow $origin $xvec -thickness $thickness
-  draw_2d_arrow $origin $yvec -thickness $thickness
-  
-  draw_arrow_miller_label $origin $xvec $xproj -fontsize $fontsize
-  draw_arrow_miller_label $origin $yvec $yproj -fontsize $fontsize
+    set rot [molinfo $currentMol get rotate_matrix]
+    switch "$viewVectorsLoc" {
+        "lower left" { 
+            set origin "$posLowerLeft(x) $posLowerLeft(y) 1"
+            set xvec "1.0 0.0 0.0"                                 ;# rightwards
+            set xproj [cart2cryst [lindex $rot 0 0]]
+            set yvec "0.0 1.0 0.0"                                 ;# upwards
+            set yproj [cart2cryst [lindex $rot 0 1]]
+        }
+        "upper left" { 
+            set origin "$posUpperLeft(x) $posUpperLeft(y) 1"
+            set xvec "1.0 0.0 0.0"                                 ;# rightwards
+            set xproj [cart2cryst [lindex $rot 0 0]]
+            set yvec "0.0 -1.0 0.0"                                ;# downwards 
+            set yproj [cart2cryst [vecscale -1 [lindex $rot 0 1]]]
+        }
+        "upper right" { 
+            set origin "$posUpperRight(x) $posUpperRight(y) 1";
+            set xvec "-1.0 0.0 0.0"                                ;# leftwards 
+            set xproj [cart2cryst [vecscale -1 [lindex $rot 0 0]]]
+            set yvec "0.0 -1.0 0.0"                                ;# downwards 
+            set yproj [cart2cryst [vecscale -1 [lindex $rot 0 1]]]
+        }
+        "lower right" { 
+            set origin "$posLowerRight(x) $posLowerRight(y) 1" 
+            set xvec "-1.0 0.0 0.0"                                ;# leftwards 
+            set xproj [cart2cryst [vecscale -1 [lindex $rot 0 0]]]
+            set yvec "0.0 1.0 0.0"                                 ;# upwards
+            set yproj [cart2cryst [lindex $rot 0 1]]
+        }
+        default { set origin_x 0; set origin_y 0; }
+    }
+
+    # Draw arrows
+    set disp "$displaySize(x) $displaySize(y) $displaySize(z)"
+    set len [expr {$len * $displaySize(z)}]
+
+    set origin [vecmul $origin $disp]
+    set xvec [vecscale $len $xvec]
+    set yvec [vecscale $len $yvec]
+
+    draw_2d_arrow $origin $xvec -thickness $thickness
+    draw_2d_arrow $origin $yvec -thickness $thickness
+
+    draw_arrow_miller_label $origin $xvec $xproj -fontsize $fontsize
+    draw_arrow_miller_label $origin $yvec $yproj -fontsize $fontsize
 
 }
 
