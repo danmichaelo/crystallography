@@ -111,11 +111,30 @@ proc ::Crystallography::GUI::set_view_direction { } {
     variable upvec_1
     variable upvec_2
 
+    if {$projvec_0 == ""} { set projvec_0 0 }
+    if {$projvec_1 == ""} { set projvec_1 0 }
+    if {$projvec_2 == ""} { set projvec_2 0 }
+    if {$upvec_0 == ""} { set upvec_0 0 }
+    if {$upvec_1 == ""} { set upvec_1 0 }
+    if {$upvec_2 == ""} { set upvec_2 0 }
+    
+    # TODO: Perhaps test for non-numerics...
+
     set projvec [list $projvec_0 $projvec_1 $projvec_2]
     set upvec [list $upvec_0 $upvec_1 $upvec_2]
 
     ::Crystallography::set_view_direction $projvec $upvec
+    
+    # Update vectors in case of scaling or orthogonalization
+    set projvec [::Crystallography::get_view_vector "z"]
+    set projvec_0 [lindex $projvec 0]
+    set projvec_1 [lindex $projvec 1]
+    set projvec_2 [lindex $projvec 2]
 
+    set upvec [::Crystallography::get_view_vector "y"]
+    set upvec_0 [lindex $upvec 0]
+    set upvec_1 [lindex $upvec 1]
+    set upvec_2 [lindex $upvec 2]
 }  
 
 proc ::Crystallography::GUI::update_gui {args} {
@@ -233,7 +252,7 @@ proc ::Crystallography::GUI::show_gui {} {
 
     # Lattice parameters
 
-    ttk::labelframe $w.uc -text "Lattice parameters" 
+    ttk::labelframe $w.uc -text "Current lattice parameters:" 
     ttk::label $w.uc.a -textvariable ::Crystallography::GUI::latticeParamText('a')
     ttk::label $w.uc.b -textvariable ::Crystallography::GUI::latticeParamText('b')
     ttk::label $w.uc.c -textvariable ::Crystallography::GUI::latticeParamText('c')
@@ -255,7 +274,7 @@ proc ::Crystallography::GUI::show_gui {} {
 
     # Current orientation
 
-    ttk::labelframe $w.orientation -text "Current orientation";
+    ttk::labelframe $w.orientation -text "Current orientation:";
 
     ttk::label $w.orientation.label_0 -text "   x: " -justify left
     grid $w.orientation.label_0 -column 0 -row 0
@@ -273,7 +292,7 @@ proc ::Crystallography::GUI::show_gui {} {
 
     # Axes
 
-    ttk::labelframe $w.draw -text "Draw"
+    ttk::labelframe $w.draw -text "Draw:"
     ttk::checkbutton $w.draw.crystaxes -text "crystallographic axes" -variable ::Crystallography::drawCrystAxes 
     grid $w.draw.crystaxes -row 0 -column 0 -columnspan 3 -sticky w 
 
@@ -300,7 +319,7 @@ proc ::Crystallography::GUI::show_gui {} {
 
     # View direction
 
-    ttk::labelframe $w.viewdir -text "View direction";
+    ttk::labelframe $w.viewdir -text "Set view direction:";
 
     ttk::frame $w.viewdir.main
     # Projection vector frame (left)
@@ -353,11 +372,11 @@ proc ::Crystallography::GUI::show_gui {} {
     ttk::button $w.viewdir.buttons.apply -text "Apply" -command {::Crystallography::GUI::set_view_direction}
     pack $w.viewdir.buttons.apply -side left
 
-    pack $w.viewdir.main $w.viewdir.buttons -side top
+    pack $w.viewdir.main $w.viewdir.buttons -side top 
 
     # Pack together
 
-    pack $w.viewdir -side top -padx 10 -pady 4
+    pack $w.viewdir -side top -fill x -padx 10 -pady 4
 
     update_gui
 

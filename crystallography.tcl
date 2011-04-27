@@ -516,7 +516,7 @@ proc ::Crystallography::set_view_direction { args } {
     if { abs([vecdot $z_vec $y_vec]) > 1e-2} {
         debug "y and z are not orthogonal"
         if {[llength $args] > 1} {
-        # TODO: implement a non-GUI alternative? something like gets stdin answer
+	        # TODO: implement a non-GUI alternative? something like gets stdin answer?
             set answer [tk_messageBox -message "An upward vector non-orthogonal ([expr abs([vecdot $z_vec $y_vec])]) to the projection vector will give the molecule a stretched, rather peculiar look. Do you want to make the upward vector orthogonal to the projection vector?" -type yesno -default yes -icon warning]
             switch -- $answer {
                 yes { 
@@ -544,16 +544,10 @@ proc ::Crystallography::set_view_direction { args } {
     }
 
     if { $y_ok == 0 } {
-    # subtract from y_vec the projection of y_vec onto z_vec (Gram Schmidt orthogonalization)
+        # subtract from y_vec the projection of y_vec onto z_vec (Gram Schmidt orthogonalization)
 
         set y_vec [vecnorm [ vecsub $y_vec [vecproj $z_vec $y_vec] ]]
 
-        #set b [ coordtrans $unitCell_inv $upvec ]
-
-        # The GUI should have a listener we could poll
-        #set upvec_0 [lindex $upback 0]
-        #set upvec_1 [lindex $upback 1]
-        #set upvec_2 [lindex $upback 2]
     }
 
     # set x vector ("rightwards" vector)
@@ -574,6 +568,32 @@ proc ::Crystallography::set_view_direction { args } {
 
     # update gui if present
     if { ![catch {package present crystallography_gui}] } ::Crystallography::GUI::update_gui
+}
+
+proc ::Crystallography::get_view_vector {vec} {
+	variable currentMol
+    set rot [molinfo $currentMol get rotate_matrix]
+
+    switch -- $vec {
+    	"x"	{ set proj [cart2cryst [lindex $rot 0 0]] }
+    	"y"	{ set proj [cart2cryst [lindex $rot 0 1]] }
+    	"z"	{ set proj [cart2cryst [lindex $rot 0 2]] }
+        default { error "error: get_view_vector: vector must be x, y or z" }
+    }
+	
+	# Scale vector to integer values (e.g. [0.7 0 0.7] -> [1 0 1])
+	set scale 1
+	for {set j 0} {$j < 3} {incr j} {
+		set vlen [expr {abs([lindex $proj $j])}]
+		if { $vlen > 0.001 && $vlen < $scale } { 
+			set scale $vlen
+		}
+	}
+	set proj [vecscale [expr {1./$scale}] $proj]
+	
+	# float -> int
+	return [list [expr {round([lindex $proj 0])}] [expr {round([lindex $proj 1])}] [expr {round([lindex $proj 2])}]]
+
 }
 
 
