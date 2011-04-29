@@ -24,7 +24,15 @@ to your `~/.vmdrc` file (or just type it in VMD when needed):
 
 The GUI is opened by using the menu item or by typing `cryst_tk`.
 
-To view along the [111] direction, say, type `view_along {1 1 1}`.
+To view along the [111] direction, type `view_along {1 1 1}`.
+To view towards the (100) plane, type `view_towards {1 0 0}`.
+To show crystal axes (without using the GUI), type `crystal_axes on -position lower-left`, say. 
+Similarly, type `view_vectors on` to show the vectors of the current viewing plane. 
+The plugin tries to show these as properly formatted Miller indices when a crystal plane is in focus.
+`cart2dir` transforms a vector from a cartesian basis {**i**,**j**,**k**} into a real space lattice basis {**a**,**b**,**c**}, 
+and `dir2cart` transforms the other way around. 
+`cart2rec` transforms a vector from a cartesian basis {i,j,k} into a reciprocal space lattice basis {**a***,**b***,**c***}, 
+and `rec2cart` transforms the other way around. 
 
 To show crystal axes (without using the GUI), type `crystal_axes on -position lower-left`, say.
 Similarly, type `view_vectors on` to show the vectors of the current viewing plane. 
