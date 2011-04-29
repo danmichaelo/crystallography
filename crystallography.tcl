@@ -578,19 +578,6 @@ proc ::Crystallography::read_pbc {} {
 
     set recUnitCellInv [ matrix3to4 [ mat3_inverse [ matrix4to3 $recUnitCell ] ] ]
 
-    puts "Unit cell:"
-    puts $unitCell
-    puts "Inverse:"
-    puts $unitCellInv
-
-    puts "Rec cell:"
-    puts $recUnitCell
-    puts "Inverse:"
-    puts $recUnitCellInv
-
-#    lset recUnitCell 1 0 0 
-#    lset recUnitCell 2 0 0 
-
     return 1
 
 }
