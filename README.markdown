@@ -29,15 +29,14 @@ To view towards the (100) plane, type `view_towards {1 0 0}`.
 To show crystal axes (without using the GUI), type `crystal_axes on -position lower-left`, say. 
 Similarly, type `view_vectors on` to show the vectors of the current viewing plane. 
 The plugin tries to show these as properly formatted Miller indices when a crystal plane is in focus.
-`cart2dir` transforms a vector from a cartesian basis {**i**,**j**,**k**} into a real space lattice basis {**a**,**b**,**c**}, 
-and `dir2cart` transforms the other way around. 
-`cart2rec` transforms a vector from a cartesian basis {**i**,**j**,**k**} into a reciprocal space lattice basis {**a**\*,**b**\*,**c**\*}, 
-and `rec2cart` transforms the other way around. 
+
+The commands `cart2dir` and `cart2rec` transforms a vector from a cartesian basis {**i**,**j**,**k**} to a 
+real space lattice basis {**a**,**b**,**c**} and a reciprocal space lattice basis {**a**\*,**b**\*,**c**\*}, respectively. 
+And `dir2cart` and `rec2cart` transforms the other way around. 
 
 To show crystal axes (without using the GUI), type `crystal_axes on -position lower-left`, say.
 Similarly, type `view_vectors on` to show the vectors of the current viewing plane. 
 The plugin tries to show these as properly formatted Miller indices when a crystal plane
 is in focus.
 
-`cart2cryst` converts a cartesian coordinate vector into a crystal vector, and `cryst2cart` 
-converts vice versa. See `crystallography.tcl` for more information.
+See `crystallography.tcl` for more information.
