@@ -21,13 +21,25 @@
 #   (or just type it in VMD when needed):
 #       vmd_install_extension crystallography cryst_tk "Crystallography"
 #   
+# Miller indices:
+#
+#   [uvw] denotes directions parallel to the _direct_ lattice vector $u\vec{a} + v\vec{b} + w\vec{c}$,
+#   where $\vec{a}$, $\vec{b}$, $\vec{c}$ are the basis vectors of the real space lattice.
+#
+#   (hkl) denotes planes orthogonal to the _reciprocal_ lattice vector $h\vec{a*} + k\vec{b*} + l\vec{b3}$,
+#   where $\vec{a*}$, $\vec{b*}$, $\vec{c*}$ are the basis vectors of the reciprocal space lattice.
+#
+#   A view can be specified either as a projection along a direct lattice vector [uvw], or as 
+#   as projection along a reciprocal lattice vector [hkl]* towards a plane (hkl).
+#
 # Example usage:
 #
-#   To view along the [111] direction, say, type `view_along {1 1 1}`.
+#   To view along the [111] direction, type `view_along {1 1 1}`.
+#   To view towards the (100) plane, type `view_towards {1 0 0}`.
 #   To show crystal axes (without using the GUI), type `crystal_axes on -position lower-left`, say. 
 #   Similarly, type `view_vectors on` to show the vectors of the current viewing plane. 
 #   The plugin tries to show these as properly formatted Miller indices when a crystal plane is in focus.
-#   `cart2cryst` converts a cartesian coordinate vector into a crystal vector, and `cryst2cart` converts vice versa. 
+#   `cart2dir` converts a cartesian coordinate vector into a crystal vector, and `dir2cart` converts vice versa. 
 #
 # Known bug(s):
 #
@@ -45,42 +57,74 @@
 
 
 #########################################
-# cart2cryst $vec
+# cart2dir $vec
 #
-#     Converts a vector of length 3 (4?) from cartesian to crystallographic 
-#     coordinates using the available unit cell information.
+#     Transforms a vector (x,y,z) from a cartesian basis (i,j,k) to a direct lattice 
+#     vector basis (a,b,c) using the available unit cell information.
 #
-# Arguments:
-#     vec     the vector to convert
+# Example:
 #
-# Returns:
-#     the converted vector
-proc cart2cryst {vec} {
+#     >>> set dirvec [cart2dir {4.5 0 0}]
+#
+proc cart2dir {vec} {
     ::Crystallography::update
-    return [::Crystallography::cart2cryst $vec]
+    return [::Crystallography::cart2dir $vec]
 }
 
 #########################################
-# cryst2cart $vec
+# dir2cart $vec
 #
-# Converts a vector of length 3 (4?) from crystallographic to cartesian
-# coordinates using the available unit cell information.
+#     Transforms a vector (u,v,w) from a direct lattice vector basis (a,b,c)
+#     to a cartesian basis (i,j,k) using the available unit cell information.
 #
-proc cryst2cart {vec} {
+# Example:
+#
+#     >>> set cartvec [dir2cart {1 1 1}]
+#
+proc dir2cart {vec} {
     ::Crystallography::update
-    return [::Crystallography::cryst2cart $vec]
+    return [::Crystallography::dir2cart $vec]
+}
+
+#########################################
+# cart2rec $vec
+#
+#     Transforms a vector (x,y,z) from a cartesian basis (i,j,k) to a reciprocal lattice 
+#     vector basis (a*,b*,c*) using the available unit cell information.
+#
+# Example:
+#
+#     >>> set recvec [cart2rec {4.5 0 0}]
+#
+proc cart2dir {vec} {
+    ::Crystallography::update
+    return [::Crystallography::cart2rec $vec]
+}
+
+#########################################
+# rec2cart $vec
+#
+#     Transforms a vector (u,v,w) from a reciprocal lattice vector basis (a*,b*,c*)
+#     to a cartesian basis (i,j,k) using the available unit cell information.
+#
+# Example:
+#
+#     >>> set cartvec [rec2cart {1 1 1}]
+#
+proc rec2cart {vec} {
+    ::Crystallography::update
+    return [::Crystallography::rec2cart $vec]
 }
 
 #########################################
 # view_along $projection_vector [$upward_vector]
 #
-# Rotates all the loaded molecules so that the z axis of the view (the axis
-# pointing out of the screen) becomes aligned with crystal vector 
-# $projection_vector of the selected molecule*. With this alignment, there
-# is still freedom for rotation about the z axis, so to completely specify
-# a given view, two vectors have to be specified. In this implementation
-# a vector $upward_vector to be aligned with the y axis of the view 
-# (pointing upwards on the screen) can be specified optionally.
+# Aligns the z axis (the `view axis') with $projection_vector, where $projection_vector 
+# is a direct lattice vector [uvw].
+#
+# If only the projection vector is specified, there will still remain freedom for rotation
+# about the z axis. To completely specify the view, a vector to be aligned with
+# the upwards direction (y direction) can be specified as the second argument.
 #
 # If $projection_vector and $upward_vector are not orthogonal, the 
 # $upward_vector is made orthogonal to $projection_vector. This is done
@@ -90,6 +134,9 @@ proc cryst2cart {vec} {
 # [*] Currently the GUI has to be used to select the correct molecule if 
 #     more molecules are loaded.
 #
+# Example:
+#     view_along {0 0 1} {1 0 0}
+#
 proc view_along {args} {
     if {[llength $args] == 0} {
         puts "usage: view_along projection_vector [upwards_vector]"
@@ -97,7 +144,46 @@ proc view_along {args} {
         return
     }
     ::Crystallography::update
-    eval ::Crystallography::set_view_direction $args
+    if {[llength $args] == 1} {
+        ::Crystallography::set_view_direction [lindex $args 0] -projalong "uvw"
+    } elseif {[llength $args] == 2} {
+        ::Crystallography::set_view_direction [lindex $args 0] -upvec [lindex $args 1] -projalong "uvw"
+    }
+}
+
+#########################################
+# view_towards $projection_vector [$upward_vector]
+#
+# Aligns the z axis (the `view axis') with $projection_vector, where $projection_vector 
+# is a reciprocal lattice vector [hkl]* normal to a crystal plane (hkl).
+#
+# If only the projection vector is specified, there will still remain freedom for rotation
+# about the z axis. To completely specify the view, a vector to be aligned with
+# the upwards direction (y direction) can be specified as the second argument.
+#
+# If $projection_vector and $upward_vector are not orthogonal, the 
+# $upward_vector is made orthogonal to $projection_vector. This is done
+# automatically when using the command line interface, but a notification
+# is displayed when using the GUI.
+#
+# [*] Currently the GUI has to be used to select the correct molecule if 
+#     more molecules are loaded.
+#
+# Example:
+#     view_along {0 0 1} {1 0 0}
+#
+proc view_towards {args} {
+    if {[llength $args] == 0} {
+        puts "usage: view_towards projection_vector [upwards_vector]"
+        puts "example: view_towards {1 1 1}"
+        return
+    }
+    ::Crystallography::update
+    if {[llength $args] == 1} {
+        ::Crystallography::set_view_direction [lindex $args 0] -projalong "hkl"
+    } elseif {[llength $args] == 2} {
+        ::Crystallography::set_view_direction [lindex $args 0] -upvec [lindex $args 1] -projalong "hkl"
+    }
 }
 
 ##########################################
@@ -300,8 +386,14 @@ namespace eval ::Crystallography:: {
     # 4x4 transformation matrix in cartesian coordinates:
     set unitCell {{ 0 0 0 0 } { 0 0 0 0 } { 0 0 0 0 } { 0 0 0 1 }}
 
-    # inverse matrix:
+    # ... and the inverse:
     set unitCellInv {{ 0 0 0 0 } { 0 0 0 0 } { 0 0 0 0 } { 0 0 0 1 }}  
+
+    # 4x4 transformation matrix in reciprocal coordinates:
+    set recUnitCell {{ 0 0 0 0 } { 0 0 0 0 } { 0 0 0 0 } { 0 0 0 1 }}
+
+    # ... and the inverse:
+    set recUnitCellInv {{ 0 0 0 0 } { 0 0 0 0 } { 0 0 0 0 } { 0 0 0 1 }}
 
     # Drawing settings:
     set drawCrystAxes 0
@@ -417,6 +509,8 @@ if {$drawViewVectors} draw_ViewVectors
 
 proc ::Crystallography::read_pbc {} {
     variable unitCell
+    variable recUnitCell
+    variable recUnitCellInv
     variable unitCellInv
     variable unitCellVol
     variable latticeParam
@@ -447,22 +541,53 @@ proc ::Crystallography::read_pbc {} {
     # Unit cell volume:
     set unitCellVol [ expr $a*$b*$c*sqrt( 1 - cos($alpha)**2 - cos($beta)**2 - cos($gamma)**2 + 2*cos($alpha)*cos($beta)*cos($gamma) ) ]
 
-    # a vector:
+    # a1 vector:
     lset unitCell 0 0 $a 
     lset unitCell 1 0 0 
     lset unitCell 2 0 0 
+    set a1 [list [lindex $unitCell 0 0] [lindex $unitCell 1 0] [lindex $unitCell 2 0]]
 
-    # b vector:
+    # a2 vector:
     lset unitCell 0 1 [ expr $b*cos($gamma) ] 
     lset unitCell 1 1 [ expr $b*sin($gamma) ] 
     lset unitCell 2 1 0 
+    set a2 [list [lindex $unitCell 0 1] [lindex $unitCell 1 1] [lindex $unitCell 2 1]]
 
-    # c vector:
+    # a3 vector:
     lset unitCell 0 2 [ expr $c*cos($beta) ] 
     lset unitCell 1 2 [ expr $c*cos($alpha)-cos($beta)*cos($gamma)/sin($gamma) ] 
     lset unitCell 2 2 [ expr $unitCellVol/($a*$b*sin($gamma)) ] 
+    set a3 [list [lindex $unitCell 0 2] [lindex $unitCell 1 2] [lindex $unitCell 2 2]]
 
     set unitCellInv [ matrix3to4 [ mat3_inverse [ matrix4to3 $unitCell ] ] ]
+
+	# Find inverse volume
+	set iv [expr {1./$unitCellVol}]
+
+    # a* vector:
+    set b1 [vecscale $iv [veccross $a2 $a3]]
+    set b2 [vecscale $iv [veccross $a3 $a1]]
+    set b3 [vecscale $iv [veccross $a1 $a2]]
+    lappend b1 0
+    lappend b2 0
+    lappend b3 0
+    set recUnitCell [transtranspose [list $b1 $b2 $b3 {0 0 0 1}]]
+
+    set recUnitCellInv [ matrix3to4 [ mat3_inverse [ matrix4to3 $recUnitCell ] ] ]
+
+    puts "Unit cell:"
+    puts $unitCell
+    puts "Inverse:"
+    puts $unitCellInv
+
+    puts "Rec cell:"
+    puts $recUnitCell
+    puts "Inverse:"
+    puts $recUnitCellInv
+
+#    lset recUnitCell 1 0 0 
+#    lset recUnitCell 2 0 0 
+
     return 1
 
 }
@@ -474,18 +599,40 @@ proc ::Crystallography::vecproj { u v } {
     return [vecscale [expr [vecdot $v $u] / [vecdot $u $u]] $u]
 }
 
-proc ::Crystallography::cryst2cart { vec } {
+# Transforms a vector (u,v,w) from a direct lattice vector basis (a,b,c)
+# to a cartesian basis (x,y,z)
+proc ::Crystallography::dir2cart { vec } {
     variable unitCell
     variable currentMol
     if {$currentMol == -1} return
     return [vecnorm [coordtrans $unitCell $vec ]]
 }
 
-proc ::Crystallography::cart2cryst { vec } {
+# Transforms a vector from a cartesian basis (x,y,z)
+# to a direct lattice vector basis (a,b,c)
+proc ::Crystallography::cart2dir { vec } {
     variable unitCellInv
     variable currentMol
     if {$currentMol == -1} return
     return [ coordtrans $unitCellInv $vec ]
+}
+
+# Transforms a vector (h,k,l) from a reciprocal lattice vector basis (a*,b*,c*)
+# to a cartesian basis (x,y,z)
+proc ::Crystallography::rec2cart { vec } {
+    variable recUnitCell
+    variable currentMol
+    if {$currentMol == -1} return
+    return [vecnorm [coordtrans $recUnitCell $vec ]]
+}
+
+# Transforms a vector from a cartesian basis (x,y,z)
+# to a reciprocal lattice vector basis (a*,b*,c*)
+proc ::Crystallography::cart2rec { vec } {
+    variable recUnitCellInv
+    variable currentMol
+    if {$currentMol == -1} return
+    return [ coordtrans $recUnitCellInv $vec ]
 }
 
 # To specify the view uniquely, two orthogonal vectors are needed. 
@@ -500,22 +647,40 @@ proc ::Crystallography::set_view_direction { args } {
     variable orientationChanged
     if {$currentMol == -1} return
 
-    # set z vector (projection vector)
-    if {[lindex $args 0] == [veczero]} { puts "What is life like along the zero vector? Perhaps mathematicians know?"; return; }
-    set z_vec [ cryst2cart [lindex $args 0] ]
-
-    # set y vector ("upwards" vector)
-    if { [llength $args] > 1 } {
-        set y_vec [ cryst2cart [lindex $args 1] ]
-    } else {
-        set y_vec [ cryst2cart {0 0 1} ]   ;# hmm, would some qualified guess be better ?
+    # Parse options
+    set projvec [lindex $args 0]
+    set upvec {0 0 1}               ;# default upwards vector. Perhaps the default could be chosen slightly more intelligibly?
+    set upvecDefault 1
+    set projalong "uvw"
+    for { set argnum 1 } { $argnum < [llength $args] } { incr argnum } {
+        set arg [ lindex $args $argnum ]
+        set val [ lindex $args [expr $argnum + 1]]
+        switch -- $arg {
+            "-upvec"      { set upvec $val; set upvecDefault 0; incr argnum }
+            "-projalong"  { set projalong $val; incr argnum }
+            default { error "error: crystallogrpahy: unknown option: $arg" }
+        }
     }
+
+    # set z vector (projection vector)
+    if {$projvec == [veczero]} { puts "What is the view like along the zero vector? Perhaps mathematicians know?"; return; }
+    if { "$projalong" == "uvw" } {
+	    set z_vec [ dir2cart $projvec ]
+	    set y_vec [ rec2cart $upvec ]
+	} elseif { "$projalong" == "hkl" } {
+	    set z_vec [ rec2cart $projvec ]	
+	    set y_vec [ dir2cart $upvec ]	
+	} else {
+		# ERROR: Unknown
+		puts "Error: Unknown proj $projalong"
+		return
+	}
 
     # Check if z and y are orthogonal
     set y_ok 1
     if { abs([vecdot $z_vec $y_vec]) > 1e-2} {
         debug "y and z are not orthogonal"
-        if {[llength $args] > 1} {
+        if {$upvecDefault == 0} {
 	        # TODO: implement a non-GUI alternative? something like gets stdin answer?
             set answer [tk_messageBox -message "An upward vector non-orthogonal ([expr abs([vecdot $z_vec $y_vec])]) to the projection vector will give the molecule a stretched, rather peculiar look. Do you want to make the upward vector orthogonal to the projection vector?" -type yesno -default yes -icon warning]
             switch -- $answer {
@@ -552,7 +717,7 @@ proc ::Crystallography::set_view_direction { args } {
 
     # set x vector ("rightwards" vector)
     set x_vec [vecnorm [veccross $y_vec $z_vec]]
-
+    
     # Define new 4x4 rotation matrix...
     set rot "{{$x_vec 0} {$y_vec 0} {$z_vec 0} {0 0 0 1}}"
 
@@ -570,25 +735,49 @@ proc ::Crystallography::set_view_direction { args } {
     if { ![catch {package present crystallography_gui}] } ::Crystallography::GUI::update_gui
 }
 
-proc ::Crystallography::get_view_vector {vec} {
+############################################################
+#
+# ::Crystallography::get_view_vector $vec $basis
+# 
+#     Returns the direct (if $basis = "dir") or reciprocal (if $basis = "rec") lattice vector
+#     of the direction $vec, where $vec is either "x", "y" or "z"      
+#
+# Example: 
+#     # returns the current projection vector in direct lattice vector basis (a,b,c):
+#     ::Crystallography::get_view_vector "z" "dir" 
+#
+proc ::Crystallography::get_view_vector {vec basis} {
 	variable currentMol
     set rot [molinfo $currentMol get rotate_matrix]
 
-    switch -- $vec {
-    	"x"	{ set proj [cart2cryst [lindex $rot 0 0]] }
-    	"y"	{ set proj [cart2cryst [lindex $rot 0 1]] }
-    	"z"	{ set proj [cart2cryst [lindex $rot 0 2]] }
-        default { error "error: get_view_vector: vector must be x, y or z" }
-    }
+    if { "$basis" == "dir" } {
+		switch -- $vec {
+			"x"	{ set proj [cart2dir [lindex $rot 0 0]] }
+			"y"	{ set proj [cart2dir [lindex $rot 0 1]] }
+			"z"	{ set proj [cart2dir [lindex $rot 0 2]] }
+			default { error "error: get_view_vector: vector must be x, y or z" }
+		}
+	} elseif { "$basis" == "rec" } {
+		switch -- $vec {
+			"x"	{ set proj [cart2rec [lindex $rot 0 0]] }
+			"y"	{ set proj [cart2rec [lindex $rot 0 1]] }
+			"z"	{ set proj [cart2rec [lindex $rot 0 2]] }
+			default { error "error: get_view_vector: vector must be x, y or z" }
+		}
+	} else {
+	    print "ERROR: unknown basis"
+	    return
+	}
 	
 	# Scale vector to integer values (e.g. [0.7 0 0.7] -> [1 0 1])
-	set scale 1
+	set scale 1.e6
 	for {set j 0} {$j < 3} {incr j} {
 		set vlen [expr {abs([lindex $proj $j])}]
 		if { $vlen > 0.001 && $vlen < $scale } { 
 			set scale $vlen
 		}
 	}
+	debug "Vec is $proj. Scale is $scale" 
 	set proj [vecscale [expr {1./$scale}] $proj]
 	
 	# float -> int
@@ -1083,30 +1272,30 @@ proc ::Crystallography::draw_ViewVectors {} {
         "lower left" { 
             set origin "$posLowerLeft(x) $posLowerLeft(y) 1"
             set xvec "1.0 0.0 0.0"                                 ;# rightwards
-            set xproj [cart2cryst [lindex $rot 0 0]]
+            set xproj [cart2dir [lindex $rot 0 0]]
             set yvec "0.0 1.0 0.0"                                 ;# upwards
-            set yproj [cart2cryst [lindex $rot 0 1]]
+            set yproj [cart2dir [lindex $rot 0 1]]
         }
         "upper left" { 
             set origin "$posUpperLeft(x) $posUpperLeft(y) 1"
             set xvec "1.0 0.0 0.0"                                 ;# rightwards
-            set xproj [cart2cryst [lindex $rot 0 0]]
+            set xproj [cart2dir [lindex $rot 0 0]]
             set yvec "0.0 -1.0 0.0"                                ;# downwards 
-            set yproj [cart2cryst [vecscale -1 [lindex $rot 0 1]]]
+            set yproj [cart2dir [vecscale -1 [lindex $rot 0 1]]]
         }
         "upper right" { 
             set origin "$posUpperRight(x) $posUpperRight(y) 1";
             set xvec "-1.0 0.0 0.0"                                ;# leftwards 
-            set xproj [cart2cryst [vecscale -1 [lindex $rot 0 0]]]
+            set xproj [cart2dir [vecscale -1 [lindex $rot 0 0]]]
             set yvec "0.0 -1.0 0.0"                                ;# downwards 
-            set yproj [cart2cryst [vecscale -1 [lindex $rot 0 1]]]
+            set yproj [cart2dir [vecscale -1 [lindex $rot 0 1]]]
         }
         "lower right" { 
             set origin "$posLowerRight(x) $posLowerRight(y) 1" 
             set xvec "-1.0 0.0 0.0"                                ;# leftwards 
-            set xproj [cart2cryst [vecscale -1 [lindex $rot 0 0]]]
+            set xproj [cart2dir [vecscale -1 [lindex $rot 0 0]]]
             set yvec "0.0 1.0 0.0"                                 ;# upwards
-            set yproj [cart2cryst [lindex $rot 0 1]]
+            set yproj [cart2dir [lindex $rot 0 1]]
         }
         default { set origin_x 0; set origin_y 0; }
     }

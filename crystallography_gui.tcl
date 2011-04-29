@@ -91,6 +91,14 @@ namespace eval ::Crystallography::GUI:: {
     set upvec_0 0
     set upvec_1 1
     set upvec_2 0
+    set projAlong "uvw"
+
+	set labelProj1 "   u: "
+	set labelProj2 "   v: "
+	set labelProj3 "   w: "
+	set labelUp1 "   h: "
+	set labelUp2 "   k: "
+	set labelUp3 "   l: "
 
     set molMenuButtonText "none"
 
@@ -110,6 +118,7 @@ proc ::Crystallography::GUI::set_view_direction { } {
     variable upvec_0
     variable upvec_1
     variable upvec_2
+    variable projAlong
 
     if {$projvec_0 == ""} { set projvec_0 0 }
     if {$projvec_1 == ""} { set projvec_1 0 }
@@ -123,19 +132,57 @@ proc ::Crystallography::GUI::set_view_direction { } {
     set projvec [list $projvec_0 $projvec_1 $projvec_2]
     set upvec [list $upvec_0 $upvec_1 $upvec_2]
 
-    ::Crystallography::set_view_direction $projvec $upvec
+    ::Crystallography::set_view_direction $projvec -upvec $upvec -projalong "$projAlong"
     
     # Update vectors in case of scaling or orthogonalization
-    set projvec [::Crystallography::get_view_vector "z"]
+    
+    if {"$projAlong" == "uvw"} {
+        set projvec [::Crystallography::get_view_vector "z" "dir"]
+        set upvec [::Crystallography::get_view_vector "y" "rec"]
+	} else {
+        set projvec [::Crystallography::get_view_vector "z" "rec"]
+        set upvec [::Crystallography::get_view_vector "y" "dir"]	
+	}
+
     set projvec_0 [lindex $projvec 0]
     set projvec_1 [lindex $projvec 1]
     set projvec_2 [lindex $projvec 2]
 
-    set upvec [::Crystallography::get_view_vector "y"]
     set upvec_0 [lindex $upvec 0]
     set upvec_1 [lindex $upvec 1]
     set upvec_2 [lindex $upvec 2]
 }  
+
+proc ::Crystallography::GUI::update_gui_projalong {args} {
+
+    variable projAlong
+    variable labelProj1
+    variable labelProj2
+    variable labelProj3
+    variable labelUp1
+    variable labelUp2
+    variable labelUp3
+
+    # If GUI not initialized, go away
+    if { ! [ winfo exists .crystallography]} return
+    
+    if { "$projAlong" == "uvw" } {
+		set labelProj1 "   u: "
+		set labelProj2 "   v: "
+		set labelProj3 "   w: "
+		set labelUp1 "   h: "
+		set labelUp2 "   k: "
+		set labelUp3 "   l: "
+    } else {
+		set labelProj1 "   h: "
+		set labelProj2 "   k: "
+		set labelProj3 "   l: "
+		set labelUp1 "   u: "
+		set labelUp2 "   v: "
+		set labelUp3 "   w: "
+	}
+
+}
 
 proc ::Crystallography::GUI::update_gui {args} {
 
@@ -323,50 +370,53 @@ proc ::Crystallography::GUI::show_gui {} {
 
     ttk::frame $w.viewdir.main
     # Projection vector frame (left)
-    ttk::frame $w.viewdir.main.proj
-    ttk::label $w.viewdir.main.proj.label -text "Projection vector" 
-    ttk::frame $w.viewdir.main.proj.grid
 
-    ttk::label $w.viewdir.main.proj.grid.x -text "   u: " 
-    grid $w.viewdir.main.proj.grid.x -column 0 -row 0
-    ttk::entry $w.viewdir.main.proj.grid.u -width 3 -textvariable ::Crystallography::GUI::projvec_0
-    grid $w.viewdir.main.proj.grid.u -column 1 -row 0
+    ttk::frame $w.viewdir.main.opt
+    ttk::radiobutton $w.viewdir.main.opt.rb1 -text "Project along axis \[uvw\]" -variable ::Crystallography::GUI::projAlong -value "uvw" 
+    ttk::radiobutton $w.viewdir.main.opt.rb2 -text "Project along the normal to the plane (hkl)" -variable ::Crystallography::GUI::projAlong -value "hkl"
+    grid $w.viewdir.main.opt.rb1 -column 0 -row 0 -sticky w
+    grid $w.viewdir.main.opt.rb2 -column 0 -row 1 -sticky w
+    pack $w.viewdir.main.opt -side top -padx 4 -pady 4
+    
+    ttk::frame $w.viewdir.main.vec
+    
+    ttk::label $w.viewdir.main.vec.projlabel -text "Projection vector (z):" 
+    grid $w.viewdir.main.vec.projlabel -column 0 -row 0 -sticky w 
+	
+    ttk::label $w.viewdir.main.vec.ul -textvariable ::Crystallography::GUI::labelProj1 
+    grid $w.viewdir.main.vec.ul -column 1 -row 0
+    ttk::entry $w.viewdir.main.vec.u -width 3 -textvariable ::Crystallography::GUI::projvec_0
+    grid $w.viewdir.main.vec.u -column 2 -row 0
 
-    ttk::label $w.viewdir.main.proj.grid.y -text "   v: " 
-    grid $w.viewdir.main.proj.grid.y -column 0 -row 1
-    ttk::entry $w.viewdir.main.proj.grid.v -width 3 -textvariable ::Crystallography::GUI::projvec_1
-    grid $w.viewdir.main.proj.grid.v -column 1 -row 1
+    ttk::label $w.viewdir.main.vec.vl -textvariable ::Crystallography::GUI::labelProj2
+    grid $w.viewdir.main.vec.vl -column 3 -row 0
+    ttk::entry $w.viewdir.main.vec.v -width 3 -textvariable ::Crystallography::GUI::projvec_1
+    grid $w.viewdir.main.vec.v -column 4 -row 0
 
-    ttk::label $w.viewdir.main.proj.grid.z -text "   w: " 
-    grid $w.viewdir.main.proj.grid.z -column 0 -row 2
-    ttk::entry $w.viewdir.main.proj.grid.w -width 3 -textvariable ::Crystallography::GUI::projvec_2
-    grid $w.viewdir.main.proj.grid.w -column 1 -row 2
+    ttk::label $w.viewdir.main.vec.wl -textvariable ::Crystallography::GUI::labelProj3
+    grid $w.viewdir.main.vec.wl -column 5 -row 0
+    ttk::entry $w.viewdir.main.vec.w -width 3 -textvariable ::Crystallography::GUI::projvec_2
+    grid $w.viewdir.main.vec.w -column 6 -row 0
 
-    pack $w.viewdir.main.proj.label $w.viewdir.main.proj.grid -side top -padx 4 -pady 4
+    ttk::label $w.viewdir.main.vec.uplabel -text "Upward vector (y):" 
+    grid $w.viewdir.main.vec.uplabel -column 0 -row 1 -sticky w 
 
-    # Upward vector frame (right)
-    ttk::frame $w.viewdir.main.up
-    ttk::label $w.viewdir.main.up.label -text "Upward vector" 
-    ttk::frame $w.viewdir.main.up.grid
+    ttk::label $w.viewdir.main.vec.hl -textvariable ::Crystallography::GUI::labelUp1
+    grid $w.viewdir.main.vec.hl -column 1 -row 1
+    ttk::entry $w.viewdir.main.vec.h -width 3 -textvariable ::Crystallography::GUI::upvec_0
+    grid $w.viewdir.main.vec.h -column 2 -row 1
 
-    ttk::label $w.viewdir.main.up.grid.x -text "   h: " 
-    grid $w.viewdir.main.up.grid.x -column 0 -row 0
-    ttk::entry $w.viewdir.main.up.grid.h -width 3 -textvariable ::Crystallography::GUI::upvec_0
-    grid $w.viewdir.main.up.grid.h -column 1 -row 0
+    ttk::label $w.viewdir.main.vec.kl -textvariable ::Crystallography::GUI::labelUp2
+    grid $w.viewdir.main.vec.kl -column 3 -row 1
+    ttk::entry $w.viewdir.main.vec.k -width 3 -textvariable ::Crystallography::GUI::upvec_1
+    grid $w.viewdir.main.vec.k -column 4 -row 1
 
-    ttk::label $w.viewdir.main.up.grid.y -text "   k: " 
-    grid $w.viewdir.main.up.grid.y -column 0 -row 1
-    ttk::entry $w.viewdir.main.up.grid.k -width 3 -textvariable ::Crystallography::GUI::upvec_1
-    grid $w.viewdir.main.up.grid.k -column 1 -row 1
+    ttk::label $w.viewdir.main.vec.ll -textvariable ::Crystallography::GUI::labelUp3 
+    grid $w.viewdir.main.vec.ll -column 5 -row 1
+    ttk::entry $w.viewdir.main.vec.l -width 3 -textvariable ::Crystallography::GUI::upvec_2
+    grid $w.viewdir.main.vec.l -column 6 -row 1
 
-    ttk::label $w.viewdir.main.up.grid.z -text "   l: " 
-    grid $w.viewdir.main.up.grid.z -column 0 -row 2
-    ttk::entry $w.viewdir.main.up.grid.l -width 3 -textvariable ::Crystallography::GUI::upvec_2
-    grid $w.viewdir.main.up.grid.l -column 1 -row 2
-
-    pack $w.viewdir.main.up.label $w.viewdir.main.up.grid -side top -padx 4 -pady 4
-
-    pack $w.viewdir.main.proj $w.viewdir.main.up -side left -padx 4 -pady 4
+    pack $w.viewdir.main.vec -side top -padx 4 -pady 4
 
     ttk::frame $w.viewdir.buttons
     ttk::button $w.viewdir.buttons.apply -text "Apply" -command {::Crystallography::GUI::set_view_direction}
@@ -378,10 +428,27 @@ proc ::Crystallography::GUI::show_gui {} {
 
     pack $w.viewdir -side top -fill x -padx 10 -pady 4
 
+    ttk::labelframe $w.quickview -text "View presets:";
+    ttk::frame $w.quickview.buttons
+    ttk::button $w.quickview.buttons.a -text "a" -command {::Crystallography::GUI::set_view_from_preset "a"}
+    ttk::button $w.quickview.buttons.b -text "b" -command {::Crystallography::GUI::set_view_from_preset "b"}
+    ttk::button $w.quickview.buttons.c -text "c" -command {::Crystallography::GUI::set_view_from_preset "c"}
+    ttk::button $w.quickview.buttons.aa -text "a*" -command {::Crystallography::GUI::set_view_from_preset "a*"}
+    ttk::button $w.quickview.buttons.bb -text "b*" -command {::Crystallography::GUI::set_view_from_preset "b*"}
+    ttk::button $w.quickview.buttons.cc -text "c*" -command {::Crystallography::GUI::set_view_from_preset "c*"}
+    grid $w.quickview.buttons.a -column 0 -row 0
+    grid $w.quickview.buttons.b -column 1 -row 0
+    grid $w.quickview.buttons.c -column 2 -row 0
+    grid $w.quickview.buttons.aa -column 0 -row 1
+    grid $w.quickview.buttons.bb -column 1 -row 1
+    grid $w.quickview.buttons.cc -column 2 -row 1
+    pack $w.quickview.buttons -side top -fill x -padx 10 -pady 4
+    pack $w.quickview -side top -fill x -padx 10 -pady 4
+
     update_gui
 
     ######################################
-    # Subscribe to some events 
+    # Subscribe to some events (remember to unsubscribe to all upon destroy_gui below)
 
     # When the window is closed:
     wm protocol $w WM_DELETE_WINDOW {::Crystallography::GUI::destroy_gui}
@@ -397,21 +464,62 @@ proc ::Crystallography::GUI::show_gui {} {
     # ... and the lattice parameters
     trace add variable ::Crystallography::currentMol write ::Crystallography::GUI::update_gui
 
+    # When projection along is changed
+    trace add variable ::Crystallography::GUI::projAlong write ::Crystallography::GUI::update_gui_projalong
+
     # When a new molecule is loaded or deleted, we update the mol menu
     trace add variable ::vmd_initialize_structure write ::Crystallography::GUI::initialize_structure_cb 
 
     # When the orientation is changed, we update the orientation frame
     trace add variable ::vmd_logfile write ::Crystallography::GUI::logfile_cb
-
+    
     return $w
 }
 
+proc ::Crystallography::GUI::set_view_from_preset {preset} {
+    variable projvec_0
+    variable projvec_1
+    variable projvec_2
+    variable upvec_0
+    variable upvec_1
+    variable upvec_2
+    variable projAlong
+    
+    switch -- $preset {
+        "a"  { set projAlong "uvw"
+               set projvec_0 1; set projvec_1 0; set projvec_2 0
+               set upvec_0 0; set upvec_1 0; set upvec_2 1
+             }
+        "b"  { set projAlong "uvw"
+               set projvec_0 0; set projvec_1 1; set projvec_2 0
+               set upvec_0 1; set upvec_1 0; set upvec_2 0
+             }
+        "c"  { set projAlong "uvw"
+               set projvec_0 0; set projvec_1 0; set projvec_2 1
+               set upvec_0 0; set upvec_1 1; set upvec_2 0
+            }
+        "a*" { set projAlong "hkl"
+               set projvec_0 1; set projvec_1 0; set projvec_2 0
+               set upvec_0 0; set upvec_1 0; set upvec_2 1
+             }
+        "b*" { set projAlong "hkl"
+               set projvec_0 0; set projvec_1 1; set projvec_2 0
+               set upvec_0 1; set upvec_1 0; set upvec_2 0
+             }
+        "c*" { set projAlong "hkl"
+               set projvec_0 0; set projvec_1 0; set projvec_2 1
+               set upvec_0 0; set upvec_1 1; set upvec_2 0
+             }
+    }
+    set_view_direction
+}
 
 proc ::Crystallography::GUI::destroy_gui {} {
     variable w
     debug "WM_DELETE_WINDOW"
     trace remove variable ::Crystallography::currentMol write ::Crystallography::GUI::update_molmenubtn_text
     trace remove variable ::Crystallography::currentMol write ::Crystallography::GUI::update_gui
+    trace remove variable ::Crystallography::GUI::projAlong write ::Crystallography::GUI::update_gui_projalong
     trace remove variable ::vmd_initialize_structure write ::Crystallography::GUI::initialize_structure_cb 
     trace remove variable ::vmd_logfile write ::Crystallography::GUI::logfile_cb
     destroy $w
