@@ -31,7 +31,7 @@ Similarly, type `view_vectors on` to show the vectors of the current viewing pla
 The plugin tries to show these as properly formatted Miller indices when a crystal plane is in focus.
 `cart2dir` transforms a vector from a cartesian basis {**i**,**j**,**k**} into a real space lattice basis {**a**,**b**,**c**}, 
 and `dir2cart` transforms the other way around. 
-`cart2rec` transforms a vector from a cartesian basis {i,j,k} into a reciprocal space lattice basis {**a***,**b***,**c***}, 
+`cart2rec` transforms a vector from a cartesian basis {**i**,**j**,**k**} into a reciprocal space lattice basis {**a\***,**b\***,**c\***}, 
 and `rec2cart` transforms the other way around. 
 
 To show crystal axes (without using the GUI), type `crystal_axes on -position lower-left`, say.
