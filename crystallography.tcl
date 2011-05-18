@@ -269,6 +269,33 @@ proc crystal_debug {args} {
     }
 }
 
+
+#########################################
+# crystal_info
+#
+#     Prints out the direct and reciprocal lattice vectors in a format 
+#     suitable for copying into python, matlab, and the like.
+#
+# Example:
+proc crystal_info {} {
+    #variable recUnitCell
+    puts "Direct lattice vectors:"
+    set a [lrange [lindex $::Crystallography::unitCell 0] 0 2]
+    set b [lrange [lindex $::Crystallography::unitCell 1] 0 2]
+    set c [lrange [lindex $::Crystallography::unitCell 2] 0 2]
+    puts [format "  a1 = \[% .8f, % .8f, % .8f\]" [lindex $a 0] [lindex $a 1] [lindex $a 2]]
+    puts [format "  a2 = \[% .8f, % .8f, % .8f\]" [lindex $b 0] [lindex $b 1] [lindex $b 2]]
+    puts [format "  a3 = \[% .8f, % .8f, % .8f\]" [lindex $c 0] [lindex $c 1] [lindex $c 2]]
+
+    puts "Reciprocal lattice vectors:"
+    set aa [lrange [lindex $::Crystallography::recUnitCell 0] 0 2]
+    set bb [lrange [lindex $::Crystallography::recUnitCell 1] 0 2]
+    set cc [lrange [lindex $::Crystallography::recUnitCell 2] 0 2]
+    puts [format "  b1 = \[% .8f, % .8f, % .8f\]" [lindex $aa 0] [lindex $aa 1] [lindex $aa 2]]
+    puts [format "  b2 = \[% .8f, % .8f, % .8f\]" [lindex $bb 0] [lindex $bb 1] [lindex $bb 2]]
+    puts [format "  b3 = \[% .8f, % .8f, % .8f\]" [lindex $cc 0] [lindex $cc 1] [lindex $cc 2]]
+}
+
 ##########################################
 # check_norms
 #
