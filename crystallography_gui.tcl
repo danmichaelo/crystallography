@@ -187,6 +187,7 @@ proc ::Crystallography::GUI::update_gui_projalong {args} {
 proc ::Crystallography::GUI::update_gui {args} {
 
     variable latticeParamText
+    variable w
 
     # If GUI not initialized, go away
     if { ! [ winfo exists .crystallography]} return
@@ -220,6 +221,14 @@ proc ::Crystallography::GUI::update_gui {args} {
         set latticeParamText('alpha') ""
         set latticeParamText('beta') ""
         set latticeParamText('gamma') ""
+        $w.viewdir.buttons.apply state disabled
+        $w.quickview.buttons.a state disabled
+        $w.quickview.buttons.b state disabled
+        $w.quickview.buttons.c state disabled
+        $w.quickview.buttons.aa state disabled
+        $w.quickview.buttons.bb state disabled
+        $w.quickview.buttons.cc state disabled
+        
     } else {
         set a [lindex $p 0]; set b [lindex $p 1]; set c [lindex $p 2];
         set alpha [lindex $p 3]; set beta [lindex $p 4]; set gamma [lindex $p 5];
@@ -229,6 +238,13 @@ proc ::Crystallography::GUI::update_gui {args} {
         set latticeParamText('alpha') [format "α = %.02f°" $alpha]
         set latticeParamText('beta') [format "β = %.02f°" $beta]
         set latticeParamText('gamma') [format "γ = %.02f°" $gamma]
+        $w.viewdir.buttons.apply state !disabled
+        $w.quickview.buttons.a state !disabled
+        $w.quickview.buttons.b state !disabled
+        $w.quickview.buttons.c state !disabled
+        $w.quickview.buttons.aa state !disabled
+        $w.quickview.buttons.bb state !disabled
+        $w.quickview.buttons.cc state !disabled
     }
 
     # Update orientation (formatted for the GUI)
