@@ -537,6 +537,18 @@ if {$drawViewVectors} draw_ViewVectors
 
 }
 
+#
+# If a float <f> is close enough to a reference value <ref>, this
+# function will set the float equal to the reference value.
+# This is useful to remove some numerical noise.
+proc ::Crystallography::fix_float {f ref} {
+    set tol 1e-5
+    if {abs($f-$ref)<$tol} {
+        return $ref
+    }
+    return $f
+}
+
 proc ::Crystallography::read_pbc {} {
     variable unitCell
     variable recUnitCell
@@ -578,15 +590,15 @@ proc ::Crystallography::read_pbc {} {
     set a1 [list [lindex $unitCell 0 0] [lindex $unitCell 1 0] [lindex $unitCell 2 0]]
 
     # a2 vector:
-    lset unitCell 0 1 [ expr $b*cos($gamma) ] 
-    lset unitCell 1 1 [ expr $b*sin($gamma) ] 
+    lset unitCell 0 1 [fix_float [expr {$b*cos($gamma)}] 0]
+    lset unitCell 1 1 [fix_float [expr {$b*sin($gamma)}] 0]
     lset unitCell 2 1 0 
     set a2 [list [lindex $unitCell 0 1] [lindex $unitCell 1 1] [lindex $unitCell 2 1]]
 
     # a3 vector:
-    lset unitCell 0 2 [ expr $c*cos($beta) ] 
-    lset unitCell 1 2 [ expr $c*cos($alpha)-cos($beta)*cos($gamma)/sin($gamma) ] 
-    lset unitCell 2 2 [ expr $unitCellVol/($a*$b*sin($gamma)) ] 
+    lset unitCell 0 2 [fix_float [expr {$c*cos($beta)}] 0] 
+    lset unitCell 1 2 [fix_float [expr {$c*cos($alpha)-cos($beta)*cos($gamma)/sin($gamma)}] 0] 
+    lset unitCell 2 2 [fix_float [expr {$unitCellVol/($a*$b*sin($gamma))} ] 0] 
     set a3 [list [lindex $unitCell 0 2] [lindex $unitCell 1 2] [lindex $unitCell 2 2]]
 
     set unitCellInv [ matrix3to4 [ mat3_inverse [ matrix4to3 $unitCell ] ] ]
@@ -680,7 +692,8 @@ proc ::Crystallography::set_view_direction { args } {
     }
 
     # set z vector (projection vector)
-    if {$projvec == [veczero]} { puts "What is the view like along the zero vector? Perhaps mathematicians know?"; return; }
+    if {$projvec == [veczero]} { puts "ERROR: You would see very little along the zero vector (or maybe everything?)"; return; }
+    if {$upvec == [veczero]} { puts "ERROR: You would see very little along the zero vector (or maybe everything?)"; return; }
     if { "$projalong" == "uvw" } {
 	    set z_vec [ dir2cart $projvec ]
 	    set y_vec [ rec2cart $upvec ]
