@@ -39,11 +39,16 @@ display resize 600 600
 display resetview
 scale by 1.2
 
+
 ##
 pbc box
+
 # Load crystallography package if it hasn't been loaded already 
 if { [catch {package present crystallography_gui}] } {
     vmd_install_extension crystallography_gui cryst_tk "Crystallography"
 }
 cryst_tk
 
+crystal_axes on -position lower-left
+animate speed 0.24
+animate forward
