@@ -142,7 +142,7 @@ proc rec2cart {vec} {
 #
 proc view_along {args} {
     if {[llength $args] == 0} {
-        puts "usage: view_along projection_vector [upwards_vector]"
+        puts "usage: view_along projection_vector \[upwards_vector\]"
         puts "example: view_along {1 1 1}"
         return
     }
@@ -674,7 +674,16 @@ proc ::Crystallography::set_view_direction { args } {
     variable unitCellInv
     variable currentMol
     variable orientationChanged
-    if {$currentMol == -1} return
+    if {$currentMol == "none"} {
+        puts "Error: No molecule selected"
+        return
+    }
+    
+    set p [ lindex [ pbc get -molid $currentMol ] 0] 
+    if {"[lindex $p 0]" == "0"} {
+        puts "Error: Unit cell data missing"
+        return
+    }
 
     # Parse options
     set projvec [lindex $args 0]
