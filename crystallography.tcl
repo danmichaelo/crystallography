@@ -34,8 +34,8 @@
 #
 # Example usage:
 #
-#   To view along the [111] direction, type `view_along {1 1 1}`.
-#   To view towards the (100) plane, type `view_towards {1 0 0}`.
+#   To view along the [111] direction, type `view_along {1 1 1}` or `view_along 111`.
+#   To view towards the (100) plane, type `view_towards {1 0 0}` or `view_towards 100`.
 #   To show crystal axes (without using the GUI), type `crystal_axes on -position lower-left`, say. 
 #   Similarly, type `view_vectors on` to show the vectors of the current viewing plane. 
 #   The plugin tries to show these as properly formatted Miller indices when a crystal plane is in focus.
@@ -139,6 +139,7 @@ proc rec2cart {vec} {
 #
 # Example:
 #     view_along {0 0 1} {1 0 0}
+#     view_along 001 100
 #
 proc view_along {args} {
     if {[llength $args] == 0} {
@@ -173,7 +174,8 @@ proc view_along {args} {
 #     more molecules are loaded.
 #
 # Example:
-#     view_along {0 0 1} {1 0 0}
+#     view_towards {0 0 1} {1 0 0}
+#     view_towards 001 100
 #
 proc view_towards {args} {
     if {[llength $args] == 0} {
@@ -669,6 +671,8 @@ proc ::Crystallography::cart2rec { vec } {
 # set_view_direction {1 1 0} {0 0 1}
 # To view along the 110 (z vector) and automaticly calculate y (non-uniquely!):
 # set_view_direction {1 1 0}
+# Short-hand notation is supported for vectors consisting of only positive single-numerals:
+# set_view_direction 111
 proc ::Crystallography::set_view_direction { args } {
     variable unitCell
     variable unitCellInv
@@ -698,6 +702,18 @@ proc ::Crystallography::set_view_direction { args } {
             "-projalong"  { set projalong $val; incr argnum }
             default { error "error: crystallogrpahy: unknown option: $arg" }
         }
+    }
+    if { [llength $projvec] == 1 && [string length $projvec] == 3} {
+        set projvec [list [string index $projvec 0] [string index $projvec 1] [string index $projvec 2]]
+    } elseif { [llength $projvec] != 3 } {
+        puts "Error: projection vector must be either a string of length 3 or a list of length 3"
+        return
+    }
+    if { [llength $upvec] == 1 && [string length $upvec] == 3} {
+        set upvec [list [string index $upvec 0] [string index $upvec 1] [string index $upvec 2]]
+    } elseif { [llength $upvec] != 3 } {
+        puts "Error: upwards vector must be either a string of length 3 or a list of length 3"
+        return
     }
 
     # set z vector (projection vector)
