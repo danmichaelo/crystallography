@@ -24,8 +24,8 @@ to your `~/.vmdrc` file (or just type it in VMD when needed):
 
 The GUI is opened by using the menu item or by typing `cryst_tk`.
 
-To view along the [111] direction, type `view_along {1 1 1}`.
-To view towards the (100) plane, type `view_towards {1 0 0}`.
+To view along the [111] direction, type `view_along {1 1 1}` (list notation) or `view_along 111` (short-hand notation)
+To view towards the (100) plane, type `view_towards {1 0 0}` or `view_towards 100`.
 To show crystal axes (without using the GUI), type `crystal_axes on -position lower-left`, say. 
 Similarly, type `view_vectors on` to show the vectors of the current viewing plane. 
 The plugin tries to show these as properly formatted Miller indices when a crystal plane is in focus.
