@@ -460,6 +460,9 @@ proc ::Crystallography::GUI::show_gui {} {
     grid $w.quickview.buttons.cc -column 2 -row 1
     pack $w.quickview.buttons -side top -fill x -padx 10 -pady 4
     pack $w.quickview -side top -fill x -padx 10 -pady 4
+    
+    ttk::label $w.footer -text "Tip: Type 'cryst' in console for command line usage" -font TkSmallCaptionFont -foreground "dark slate gray"
+    pack $w.footer -side top -fill x -padx 10 -pady 4
 
     update_gui
 

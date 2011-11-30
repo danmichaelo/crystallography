@@ -58,6 +58,30 @@
 #                                    Main commands 
 #############################################################################################
 
+#########################################
+# cryst_help
+#
+#   Displays a command cheatsheet
+#
+proc cryst {} {
+    puts "Commands provided by the Crystallography plugin:"
+    puts "   view_along {u v w}    or    view_along uvw"
+    puts "      View along the \[uvw\] axis"
+    puts "   view_towards {h k l}    or    'view_along hkl'"
+    puts "      View along the normal to the (hkl) plane"
+    puts "   crystal_axes on|off -position lower-left|upper-left|lower-right|upper-right"
+    puts "      Toggle crystallographic vectors a, b, c"
+    puts "   view_vectors on|off -position lower-left|upper-left|lower-right|upper-right"
+    puts "      Toggle view vectors (x and y direction in crystal coordinates)"
+    puts "   cryst_debug on|off"
+    puts "      Toggle debug messages"
+    puts "   cryst_info"
+    puts "      Print unit cell info"
+    puts "   cart2dir {x y z}    and    dir2cart {X Y Z}"
+    puts "      Converts a vector between cartesian and direct coordinates"
+    puts "   cart2rec {x y z}    and    rec2cart {X Y Z}"
+    puts "      Converts a vector between cartesian and reciprocal coordinates"
+}
 
 #########################################
 # cart2dir $vec
@@ -254,11 +278,11 @@ proc view_vectors {args} {
 }
 
 ##########################################
-# crystal_debug on|off
+# cryst_debug on|off
 #
 # Toggles the display of debug messages. 
 # 
-proc crystal_debug {args} {
+proc cryst_debug {args} {
     if {[llength $args] == 0} {
         puts "usage: crystal_debug on/off"
         puts "example: crystal_debug on"
@@ -273,13 +297,13 @@ proc crystal_debug {args} {
 
 
 #########################################
-# crystal_info
+# cryst_info
 #
 #     Prints out the direct and reciprocal lattice vectors in a format 
 #     suitable for copying into python, matlab, and the like.
 #
 # Example:
-proc crystal_info {} {
+proc cryst_info {} {
     #variable recUnitCell
     puts "Direct lattice vectors:"
     set a [lrange [lindex $::Crystallography::unitCell 0] 0 2]
@@ -386,7 +410,7 @@ proc matrix4to3 {mat} {
 #                               Crystallography "class"  
 #############################################################################################
 
-package provide crystallography 1.0
+package provide crystallography 1.1
 
 namespace eval ::Crystallography:: {
 
@@ -404,12 +428,13 @@ namespace eval ::Crystallography:: {
     array set displaySize {x 1 y 1 z 1}    ;# size of window
     set latticeParam { 0 0 0 0 0 0 }
     set unitCellVol 0                ;# unit cell volume in Ang**3
-    set unitCellValid 0			   ;# molecule has unit cell data?
+    set unitCellValid 0			     ;# molecule has unit cell data?
     set pbcChanged 0                 ;# track unitcell
     set orientationChanged 0         ;# track orientation
     set printDebug 0                 ;# print debug messages or not
-    set currentFrame -1		       ;# 
-
+    set currentFrame -1		         ;# 
+    set progressIndicatorFound 0     ;# has ProgressIndicator timeline been found?
+    set progressIndicatorMargin 0.3  ;# margin for ProgressIndicator timeline
     set currentMol [molinfo top]     ;# mol of study
     if { $currentMol == -1 } { set currentMol "none" }
     set previousMol $currentMol
@@ -479,64 +504,63 @@ proc ::Crystallography::update {} {
     }
     # check if a molecule has been selected  
     if { [catch { molinfo $currentMol get id } ] } {
-    # Try to get top molecule:
-    if { [catch { molinfo top get id } top_id ] } {
-        debug "Error: no molecule loaded"
-        return
+        # Try to get top molecule:
+        if { [catch { molinfo top get id } top_id ] } {
+            debug "Error: no molecule loaded"
+            return
+        }
+        # haz it atmoz?
+        if {[molinfo top get numatoms] == 0 } {
+            debug "Error: no atoms in top mol"
+            return
+        }
+        # haz it unitcell?
+        if {[lindex [pbc get] 0] == 0 } {
+            debug "Error: no unit cell infor in top mol"
+            return
+        }
+        debug "Auto-setting molecule: $top_id"
+        set currentMol $top_id
     }
-    # haz it atmoz?
-    if {[molinfo top get numatoms] == 0 } {
-        debug "Error: no atoms in top mol"
+
+    # check if PBCs changed
+    set pbcChanged [read_pbc]
+    
+    if { $unitCellValid == 0} {
+        debug "no unit cell information found"
         return
+    }  
+    
+    # Update drawings
+    if {$drawCrystAxes || $drawViewVectors} {
+        if {$pbcChanged || $orientationChanged} {
+            set orientationChanged 0
+            
+            # re-orient canvas
+            molinfo $canvasMol set center_matrix [list [transidentity]]
+            molinfo $canvasMol set rotate_matrix [list [transidentity]]
+            molinfo $canvasMol set global_matrix [list [transidentity]]
+            molinfo $canvasMol set scale_matrix  [molinfo $currentMol get scale_matrix]  
+            set canvasMolScale [lindex [molinfo $currentMol get scale_matrix] 0 0 0]
+            
+            # read display size
+            set canvasMolScale [lindex [molinfo $canvasMol get scale_matrix] 0 0 0]
+            set displaySize(y) [expr 0.25*[display get height]/$canvasMolScale]
+            set displaySize(x) [expr $displaySize(y)*[lindex [display get size] 0]/[lindex [display get size] 1]]
+            if [string equal [display get projection] "Orthographic"] {
+                set displaySize(z) [expr (2.-[display get nearclip]-0.001)/$canvasMolScale]
+            } else {
+                set displaySize(z) 0.
+            }
+            
+            #set disp "$displaySize(x) $displaySize(y) $displaySize(z)"
+            #puts "D: $disp"
+            
+            # and draw
+            if {$drawCrystAxes} draw_CrystallographicAxes
+            if {$drawViewVectors} draw_ViewVectors
+        }
     }
-    # haz it unitcell?
-    if {[lindex [pbc get] 0] == 0 } {
-        debug "Error: no unit cell infor in top mol"
-        return
-    }
-    debug "Auto-setting molecule: $top_id"
-    set currentMol $top_id
-}
-
-# check if PBCs changed
-set pbcChanged [read_pbc]
-
-if { $unitCellValid == 0} {
-    debug "no unit cell information found"
-    return
-}  
-
-# Update drawings
-if {$drawCrystAxes || $drawViewVectors} {
-if {$pbcChanged || $orientationChanged} {
-set orientationChanged 0
-
-# re-orient canvas
-molinfo $canvasMol set center_matrix [list [transidentity]]
-molinfo $canvasMol set rotate_matrix [list [transidentity]]
-molinfo $canvasMol set global_matrix [list [transidentity]]
-molinfo $canvasMol set scale_matrix  [molinfo $currentMol get scale_matrix]  
-set canvasMolScale [lindex [molinfo $currentMol get scale_matrix] 0 0 0]
-
-# read display size
-set canvasMolScale [lindex [molinfo $canvasMol get scale_matrix] 0 0 0]
-set displaySize(y) [expr 0.25*[display get height]/$canvasMolScale]
-set displaySize(x) [expr $displaySize(y)*[lindex [display get size] 0]/[lindex [display get size] 1]]
-if [string equal [display get projection] "Orthographic"] {
-    set displaySize(z) [expr (2.-[display get nearclip]-0.001)/$canvasMolScale]
-} else {
-    set displaySize(z) 0.
-}
-
-#set disp "$displaySize(x) $displaySize(y) $displaySize(z)"
-#puts "D: $disp"
-
-# and draw
-if {$drawCrystAxes} draw_CrystallographicAxes
-if {$drawViewVectors} draw_ViewVectors
-}
-  }
-
 }
 
 #
@@ -1117,7 +1141,7 @@ proc ::Crystallography::draw_arrow_label {args} {
     set dist [vecscale $dist [lreplace $vec 2 2 0.0]] ;# x,y direction only, drop z direction
 
     set cos_ang [expr {[vecdot "1 0 0" "$dist"] / [veclength "$dist"]}]   ;# [-1,1]
-    set char_width [expr {$displaySize(z)*$fontsize*$char_width}]
+    set char_width [expr {$displaySize(x)*$fontsize*$char_width}]
     set str_width [expr {$char_width * [string length $label] }]
     set dx [expr {-$str_width/2. + $str_width/2*$cos_ang}] ;# subtract for approximate center-alignment
     set dist [vecadd $dist "$dx 0 0"]
@@ -1201,7 +1225,7 @@ proc ::Crystallography::draw_arrow_miller_label {args} {
         set lab_pos [draw_arrow_label $origin $vec $txt -fontsize $fontsize]
 
         # Add overbars:
-        set char_width [expr {$displaySize(z)*$fontsize*$char_width}]
+        set char_width [expr {$displaySize(x)*$fontsize*$char_width}]
         set bar_pos [vecadd $lab_pos "[expr {-0.01*$char_width}] [expr {1.7*$char_width}] 0"]
         graphics $canvasMol text $bar_pos " $barx$bary$barz " size $fontsize
 
@@ -1216,7 +1240,25 @@ proc ::Crystallography::draw_arrow_miller_label {args} {
     #set lab_pos [vecadd $origin "[vecscale 1.2 $xvec]"]  ;# add some space
 }
 
-
+proc ::Crystallography::checkForProgressIndicator {} {
+  #variable posLowerLeft
+  #variable posLowerRight
+  #variable progressIndicatorMargin
+  variable progressIndicatorFound
+  if {![catch {package present ProgressIndicator}]} {
+    if {$::ProgressIndicator::timeline_on && !$progressIndicatorFound} {
+      puts "Crystallography: Addition of statusindicator plugin detected. Let's adjust"
+      #set posLowerLeft(y) [expr {$posLowerLeft(y) - $progressIndicatorMargin}]
+      #set posLowerRight(y) [expr {$posLowerRight(y) - $progressIndicatorMargin}]
+      set progressIndicatorFound 1
+    } elseif {!$::ProgressIndicator::timeline_on && $progressIndicatorFound} {
+      puts "Crystallography: Removal of statusindicator plugin detected. Let's adjust"
+      #set posLowerLeft(y) [expr {$posLowerLeft(y) + $progressIndicatorMargin}]
+      #set posLowerRight(y) [expr {$posLowerRight(y) + $progressIndicatorMargin}]
+      set progressIndicatorFound 0
+    }
+  }
+}
 
 proc ::Crystallography::draw_CrystallographicAxes {} {
     variable unitCell
@@ -1228,6 +1270,7 @@ proc ::Crystallography::draw_CrystallographicAxes {} {
     variable posUpperRight
     variable posLowerRight
     variable displaySize
+    variable progressIndicatorFound
 
     set rot [lindex [molinfo $currentMol get rotate_matrix] 0]
 
@@ -1253,7 +1296,7 @@ proc ::Crystallography::draw_CrystallographicAxes {} {
     set len [expr {0.2 * $crystAxesScale / 100.}]
     #set thickness [expr {2. * $crystAxesScale / 100.}]
     set fontsize [expr {$crystAxesScale / 100.}]
-
+    
     switch "$crystAxesLoc" {
         "lower left" { set origin_x $posLowerLeft(x); set origin_y $posLowerLeft(y); }
         "upper left" { set origin_x $posUpperLeft(x); set origin_y $posUpperLeft(y); }
@@ -1277,15 +1320,21 @@ proc ::Crystallography::draw_CrystallographicAxes {} {
     if {[set oos [expr {$origin_y + $len*$c_y + 0.90}]] < 0.} { set origin_y [expr {$origin_y - $oos}] 
     } elseif {[set oos [expr {$origin_y + $len*$c_y - 0.90}]] > 0.} { set origin_y [expr {$origin_y - $oos}] }
 
+    # quick and dirty:
+    checkForProgressIndicator
+    if {$progressIndicatorFound} { set origin_y [expr {$origin_y + 0.2}] }
+    
     #draw_2d_arrow "$origin_x $origin_y 0" "[expr $len*$a_x] [expr $len*$a_y] 0" "a" $thickness
     #draw_2d_arrow "$origin_x $origin_y 0" "[expr $len*$b_x] [expr $len*$b_y] 0" "b" $thickness
     #draw_2d_arrow "$origin_x $origin_y 0" "[expr $len*$c_x] [expr $len*$c_y] 0" "c" $thickness
 
     set disp "$displaySize(x) $displaySize(y) $displaySize(z)"
 
-    set origin [vecmul "$origin_x $origin_y 0" $disp]
-    set len [expr {$len * $displaySize(z)}]
-
+    set origin [vecmul "$origin_x $origin_y 1" $disp]
+    set len [expr {$len * $displaySize(x)}]
+    # subtract vector length from z origin to make sure we don't get clipped by near clip:
+    lset origin 2 [expr {[lindex $origin 2]-$len}]  
+    
     # from length-4 to length-3 vectors, and scale to fixed size
     set a [vecscale $len [lrange $a_rot 0 2]]
     set b [vecscale $len [lrange $b_rot 0 2]]
@@ -1315,17 +1364,27 @@ proc ::Crystallography::draw_ViewVectors {} {
     variable posUpperRight
     variable posLowerRight
     variable displaySize
+    variable progressIndicatorFound
+    
+    # quick and dirty fix for moving the origin if the statusindicator is enabled too:
+    checkForProgressIndicator
+    set lowerLeftY $posLowerLeft(y)
+    set lowerRightY $posLowerRight(y)
+    if {$progressIndicatorFound} { 
+        set lowerLeftY [expr {$lowerLeftY + 0.15}]
+        set lowerRightY [expr {$lowerRightY + 0.15}] 
+    }
 
     set len [expr {0.2 * $viewVectorsScale / 100.}]
-    set thickness [expr {2. * $viewVectorsScale / 100.}]
-    set fontsize [expr {$viewVectorsScale / 100.}]
+    set thickness [expr {3. * $viewVectorsScale / 100.}]
+    set fontsize [expr {2. * $viewVectorsScale / 100.}]
 
     # Determine location
 
     set rot [molinfo $currentMol get rotate_matrix]
     switch "$viewVectorsLoc" {
         "lower left" { 
-            set origin "$posLowerLeft(x) $posLowerLeft(y) 1"
+            set origin "$posLowerLeft(x) $lowerLeftY 1"
             set xvec "1.0 0.0 0.0"                                 ;# rightwards
             set xproj [cart2dir [lindex $rot 0 0]]
             set yvec "0.0 1.0 0.0"                                 ;# upwards
@@ -1346,18 +1405,18 @@ proc ::Crystallography::draw_ViewVectors {} {
             set yproj [cart2dir [vecscale -1 [lindex $rot 0 1]]]
         }
         "lower right" { 
-            set origin "$posLowerRight(x) $posLowerRight(y) 1" 
+            set origin "$posLowerRight(x) $lowerRightY 1" 
             set xvec "-1.0 0.0 0.0"                                ;# leftwards 
             set xproj [cart2dir [vecscale -1 [lindex $rot 0 0]]]
             set yvec "0.0 1.0 0.0"                                 ;# upwards
             set yproj [cart2dir [lindex $rot 0 1]]
         }
-        default { set origin_x 0; set origin_y 0; }
+        default { set origin "0 0"; }
     }
 
     # Draw arrows
     set disp "$displaySize(x) $displaySize(y) $displaySize(z)"
-    set len [expr {$len * $displaySize(z)}]
+    set len [expr {$len * $displaySize(x)}]
 
     set origin [vecmul $origin $disp]
     set xvec [vecscale $len $xvec]
@@ -1370,4 +1429,3 @@ proc ::Crystallography::draw_ViewVectors {} {
     draw_arrow_miller_label $origin $yvec $yproj -fontsize $fontsize
 
 }
-
