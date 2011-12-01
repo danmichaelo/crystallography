@@ -123,7 +123,7 @@ proc dir2cart {vec} {
 #
 #     >>> set recvec [cart2rec {4.5 0 0}]
 #
-proc cart2dir {vec} {
+proc cart2rec {vec} {
     ::Crystallography::update
     return [::Crystallography::cart2rec $vec]
 }
@@ -848,22 +848,25 @@ proc ::Crystallography::get_view_vector {vec basis} {
 	    return
 	}
 	
-	# Scale vector to integer values (e.g. [0.7 0 0.7] -> [1 0 1])
-	set scale 1.e6
-	for {set j 0} {$j < 3} {incr j} {
-		set vlen [expr {abs([lindex $proj $j])}]
-		if { $vlen > 0.001 && $vlen < $scale } { 
-			set scale $vlen
-		}
-	}
-	debug "Vec is $proj. Scale is $scale" 
-	set proj [vecscale [expr {1./$scale}] $proj]
-	
-	# float -> int
-	return [list [expr {round([lindex $proj 0])}] [expr {round([lindex $proj 1])}] [expr {round([lindex $proj 2])}]]
+	return [scale_vec_to_integer $proj] 
 
 }
 
+proc ::Crystallography::equalLists {x1 x2} {
+    if {[llength $x1] != [llength $x2]} { return 0; }
+    for {set i 0} {$i<[llength $x1]} {incr i} {
+        if {abs([lindex $x1 $i] - [lindex $x2 $i]) > 0.0001} { return 0; }
+    }
+    return 1;    
+}
+
+proc ::Crystallography::roundLists {x} {
+    set t {}
+    foreach i $x {
+        lappend t [expr {round($i)}]
+    }
+    return $t
+}
 
 
 #############################################################################################
@@ -1161,6 +1164,37 @@ proc ::Crystallography::draw_arrow_label {args} {
 
 ############################################################
 #
+# ::Crystallography::scale_vec_to_integer $vec
+# 
+# Scales a vector consisting of 3 floats to (smallest) 3 integers
+# Examples:
+#   scale_vec_to_integer {0.7 0.7 0.7} returns {1 1 1} 
+#   scale_vec_to_integer {-0.07312614470720291 0.0 0.05484461039304733} returns {-4 0 3} 
+#
+proc ::Crystallography::scale_vec_to_integer {vec} {
+    set scale 1.e6
+    for {set j 0} {$j < 3} {incr j} {
+        set vlen [expr {abs([lindex $vec $j])}]
+        if { $vlen > 0.001 && $vlen < $scale } { 
+            set scale $vlen
+        }
+    }
+    debug "Vec is $vec. Scale is $scale" 
+    for {set i 1} {$i <= 1000} {incr i} {
+        set int_vec [vecscale [expr {$i/$scale}] $vec]
+        set rounded [roundLists $int_vec]
+        debug " Attempt $i of 1000: $rounded"
+        if {[equalLists $rounded $int_vec] == 1} {
+            debug "   attempt successful"
+            return $rounded
+        }
+    }
+    puts "ERROR: Could not find suitable simple vector representation"
+    # Should we return something?
+}
+
+############################################################
+#
 # ::Crystallography::draw_arrow_miller_label $start $direction $projection_vector [OPTIONS...]
 # 
 # Adds a label based on $projection_vector for an arrow pointing from $start in the 
@@ -1189,16 +1223,10 @@ proc ::Crystallography::draw_arrow_miller_label {args} {
             default { error "error: crystallography: unknown option: $arg" }
         }
     }
-
+    
     # Scale vector to integer values (e.g. [0.7 0 0.7] -> [1 0 1])
-    set scale 1
-    for {set j 0} {$j < 3} {incr j} {
-        set vlen [expr {abs([lindex $proj $j])}]
-        if { $vlen > 0.001 && $vlen < $scale } { 
-            set scale $vlen
-        }
-    }
-    set int_proj [vecscale [expr {1./$scale}] $proj]
+    set int_proj [scale_vec_to_integer $proj]  
+    #set int_proj [vecscale [expr {1./$scale}] $proj]
 
     set x [lindex $int_proj 0]
     set y [lindex $int_proj 1]

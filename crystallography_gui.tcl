@@ -401,17 +401,17 @@ proc ::Crystallography::GUI::show_gui {} {
 	
     ttk::label $w.viewdir.main.vec.ul -textvariable ::Crystallography::GUI::labelProj1 
     grid $w.viewdir.main.vec.ul -column 1 -row 0
-    ttk::entry $w.viewdir.main.vec.u -width 3 -textvariable ::Crystallography::GUI::projvec_0
+    ttk::entry $w.viewdir.main.vec.u -width 4 -textvariable ::Crystallography::GUI::projvec_0
     grid $w.viewdir.main.vec.u -column 2 -row 0
 
     ttk::label $w.viewdir.main.vec.vl -textvariable ::Crystallography::GUI::labelProj2
     grid $w.viewdir.main.vec.vl -column 3 -row 0
-    ttk::entry $w.viewdir.main.vec.v -width 3 -textvariable ::Crystallography::GUI::projvec_1
+    ttk::entry $w.viewdir.main.vec.v -width 4 -textvariable ::Crystallography::GUI::projvec_1
     grid $w.viewdir.main.vec.v -column 4 -row 0
 
     ttk::label $w.viewdir.main.vec.wl -textvariable ::Crystallography::GUI::labelProj3
     grid $w.viewdir.main.vec.wl -column 5 -row 0
-    ttk::entry $w.viewdir.main.vec.w -width 3 -textvariable ::Crystallography::GUI::projvec_2
+    ttk::entry $w.viewdir.main.vec.w -width 4 -textvariable ::Crystallography::GUI::projvec_2
     grid $w.viewdir.main.vec.w -column 6 -row 0
 
     ttk::label $w.viewdir.main.vec.uplabel -text "Upward vector (y):" 
@@ -419,17 +419,17 @@ proc ::Crystallography::GUI::show_gui {} {
 
     ttk::label $w.viewdir.main.vec.hl -textvariable ::Crystallography::GUI::labelUp1
     grid $w.viewdir.main.vec.hl -column 1 -row 1
-    ttk::entry $w.viewdir.main.vec.h -width 3 -textvariable ::Crystallography::GUI::upvec_0
+    ttk::entry $w.viewdir.main.vec.h -width 4 -textvariable ::Crystallography::GUI::upvec_0
     grid $w.viewdir.main.vec.h -column 2 -row 1
 
     ttk::label $w.viewdir.main.vec.kl -textvariable ::Crystallography::GUI::labelUp2
     grid $w.viewdir.main.vec.kl -column 3 -row 1
-    ttk::entry $w.viewdir.main.vec.k -width 3 -textvariable ::Crystallography::GUI::upvec_1
+    ttk::entry $w.viewdir.main.vec.k -width 4 -textvariable ::Crystallography::GUI::upvec_1
     grid $w.viewdir.main.vec.k -column 4 -row 1
 
     ttk::label $w.viewdir.main.vec.ll -textvariable ::Crystallography::GUI::labelUp3 
     grid $w.viewdir.main.vec.ll -column 5 -row 1
-    ttk::entry $w.viewdir.main.vec.l -width 3 -textvariable ::Crystallography::GUI::upvec_2
+    ttk::entry $w.viewdir.main.vec.l -width 4 -textvariable ::Crystallography::GUI::upvec_2
     grid $w.viewdir.main.vec.l -column 6 -row 1
 
     pack $w.viewdir.main.vec -side top -padx 4 -pady 4
