@@ -30,14 +30,14 @@ if { [catch {package present crystallography_gui}] } {
     vmd_install_extension crystallography_gui cryst_tk "Crystallography"
 }
 
-#crystal_debug on
+#cryst_debug on
 cryst_tk
 view_along {1 1 1}
 view_vectors off
 
 # Tweak lower left position:
 array set ::Crystallography::posLowerLeft {x -0.70 y -0.70}
-crystal_axes on -position lower-left
+cryst_axes on -position lower-left
 
 # Animate:
 set runtime 0.
@@ -46,7 +46,7 @@ set relx 1.
 while { $runtime < $totaltime } {
   set t [lindex [split [time { 
     set ::Crystallography::posLowerLeft(x) $relx
-    crystal_axes on 
+    cryst_axes on 
   }]] 0]
   set runtime [expr {$runtime + $t}]
   set reltime [expr {$runtime/$totaltime}]

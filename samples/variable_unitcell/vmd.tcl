@@ -49,6 +49,6 @@ if { [catch {package present crystallography_gui}] } {
 }
 cryst_tk
 
-crystal_axes on -position lower-left
+cryst_axes on -position lower-left
 animate speed 0.24
 animate forward

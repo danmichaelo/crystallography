@@ -33,9 +33,9 @@ if { [catch {package present crystallography_gui}] } {
     vmd_install_extension crystallography_gui cryst_tk "Crystallography"
 }
 
-crystal_debug on
+cryst_debug on
 cryst_tk
 view_along {0 0 1}
-crystal_axes on -position lower-right
+cryst_axes on -position lower-right
 view_vectors on -position lower-left
 
