@@ -493,6 +493,9 @@ namespace eval ::Crystallography:: {
     array set posUpperLeft {x -0.90 y 0.90}
     array set posLowerRight {x 0.90 y -0.90}
     array set posUpperRight {x 0.90 y 0.90}
+    
+    trace add variable ::vmd_logfile write ::Crystallography::on_vmd_log_event
+
 }
 
 
@@ -524,7 +527,7 @@ proc ::Crystallography::update {} {
             graphics $canvasMol color $crystColor
         }
     }
-    # check if a molecule has been selected  
+    # check if a molecule has not yet been selected
     if { [catch { molinfo $currentMol get id } ] } {
         # Try to get top molecule:
         if { [catch { molinfo top get id } top_id ] } {
@@ -681,7 +684,9 @@ proc ::Crystallography::vecproj { u v } {
 proc ::Crystallography::dir2cart { vec } {
     variable unitCell
     variable currentMol
+    variable unitCellValid
     if {$currentMol == -1} return
+    if {$unitCellValid == 0} { puts "missing unit cell info"; return }
     return [vecnorm [coordtrans $unitCell $vec ]]
 }
 
@@ -690,7 +695,9 @@ proc ::Crystallography::dir2cart { vec } {
 proc ::Crystallography::cart2dir { vec } {
     variable unitCellInv
     variable currentMol
+    variable unitCellValid
     if {$currentMol == -1} return
+    if {$unitCellValid == 0} { puts "missing unit cell info"; return }
     return [ coordtrans $unitCellInv $vec ]
 }
 
@@ -699,7 +706,9 @@ proc ::Crystallography::cart2dir { vec } {
 proc ::Crystallography::rec2cart { vec } {
     variable recUnitCell
     variable currentMol
+    variable unitCellValid
     if {$currentMol == -1} return
+    if {$unitCellValid == 0} { puts "missing unit cell info"; return }
     return [vecnorm [coordtrans $recUnitCell $vec ]]
 }
 
@@ -708,7 +717,9 @@ proc ::Crystallography::rec2cart { vec } {
 proc ::Crystallography::cart2rec { vec } {
     variable recUnitCellInv
     variable currentMol
+    variable unitCellValid
     if {$currentMol == -1} return
+    if {$unitCellValid == 0} { puts "missing unit cell info"; return }
     return [ coordtrans $recUnitCellInv $vec ]
 }
 
@@ -917,10 +928,10 @@ proc ::Crystallography::drawSettingsChanged {args} {
         check_canvas
         enable_listeners
         set orientationChanged 1
-        update
     } else {
         disable_listeners
     }  
+    update
 }
 
 proc ::Crystallography::check_canvas {} {
@@ -956,7 +967,6 @@ proc ::Crystallography::enable_listeners {args} {
 
     debug "enable listeners"
 
-    trace add variable ::vmd_logfile write ::Crystallography::on_vmd_event
     trace add variable ::vmd_frame write ::Crystallography::on_vmd_event
     trace add variable ::vmd_quit write ::Crystallography::on_vmd_quit
     trace add variable ::vmd_initialize_structure write ::Crystallography::on_vmd_event 
@@ -975,13 +985,31 @@ proc ::Crystallography::disable_listeners {} {
 
     debug "disable listeners"
 
-    trace remove variable ::vmd_logfile write ::Crystallography::on_vmd_event
     trace remove variable ::vmd_frame write ::Crystallography::on_vmd_event
     trace remove variable ::vmd_quit write ::Crystallography::on_vmd_quit
     trace remove variable ::vmd_initialize_structure write ::Crystallography::on_vmd_event 
 
     catch {mol delete $canvasMol}
     set listenersEnabled 0
+}
+
+proc ::Crystallography::on_vmd_log_event { args } {
+    variable listenersEnabled
+    
+    #puts "log: $::vmd_logfile"
+    if {[string match "mol new*" $::vmd_logfile]} {
+        debug "New molecule loaded"
+        update
+    } elseif {[string match "mol delete*" $::vmd_logfile]} {
+        debug "Molecule deleted"
+        update        
+    } elseif {[string match "mol top*" $::vmd_logfile]} {
+        debug "New top mol"
+        update        
+    }
+    if {$listenersEnabled == 1} {
+        on_vmd_event [lindex $args 0]
+    }
 }
 
 proc ::Crystallography::on_vmd_event { args } {

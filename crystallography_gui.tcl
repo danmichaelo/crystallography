@@ -655,8 +655,11 @@ proc ::Crystallography::GUI::destroy_gui {} {
 
 proc ::Crystallography::GUI::initialize_structure_cb { args } {
     variable w
-    ::Crystallography::debug "GUI: initialize_structure"
-    fill_mol_menu $w.info.mol.menu
+    ::Crystallography::debug "GUI: got 'initialize_structure' event"
+    # Seems like this event is sent *before* the molecule has been actually loaded,
+    # and therefore before we can read its unit cell information. We'll wait for the 
+    # 'mol new' event that will be picked up by logfile_cb a little later. 
+    ### fill_mol_menu $w.info.mol.menu
 }
 
 proc ::Crystallography::GUI::logfile_cb { args } {
@@ -669,7 +672,8 @@ proc ::Crystallography::GUI::logfile_cb { args } {
         update_gui
     } elseif {[string match "display *" $::vmd_logfile]} {
         update_gui
-    } elseif {[string match "mol *" $::vmd_logfile]} {   ;# such as mol rename
+    } elseif {[string match "mol *" $::vmd_logfile]} { ;# such as mol rename, mol new and mol delete
+        #debug "GUI: mol*: $::vmd_logfile"
         fill_mol_menu $w.info.mol.menu
         update_molmenubtn_text
     } 
@@ -697,16 +701,16 @@ proc ::Crystallography::GUI::fill_mol_menu {name} {
     }
 
     #set if any non-Graphics molecule is loaded
-    if {[lsearch -exact $molList $currentMol] == -1} {
-        if {[lsearch -exact $molList [molinfo top]] != -1} {
-            ::Crystallography::debug "Auto-setting current mol to top molecule"
-            set ::Crystallography::currentMol [molinfo top]
-            set usableMolLoaded 1
-        } else {
-            set ::Crystallography::currentMol $nullMolString
-            set usableMolLoaded 0
-        }
-    }
+    # if {[lsearch -exact $molList $currentMol] == -1} {
+#         if {[lsearch -exact $molList [molinfo top]] != -1} {
+#             ::Crystallography::debug "Auto-setting current mol to top molecule"
+#             set ::Crystallography::currentMol [molinfo top]
+#             set usableMolLoaded 1
+#         } else {
+#             set ::Crystallography::currentMol $nullMolString
+#             set usableMolLoaded 0
+#         }
+#     }
 
 }
 
