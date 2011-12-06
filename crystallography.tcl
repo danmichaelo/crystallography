@@ -2,23 +2,27 @@
 # crystallography.tcl : Crystallography VMD plugin
 #
 #   This plugin was written primarily to make it easier to align the view direction along 
-#   specific crystallographic directions. 
-#   It also includes commands to convert vectors between crystallographic and cartesian coordinates,
-#   and to draw crystallographic axes arrows and view direction arrows.
+#   specific crystallographic directions. It also includes commands to convert vectors 
+#   between crystallographic and cartesian coordinates, and to draw crystallographic axes 
+#   arrows and view direction arrows.
+#
 #   For the plugin to work, the loaded molecule must contain unit cell information.
+#   If VMD can not read this from your file, it can be set manually using the 
+#   pbctools plugin. Note that pbctools also provide the nice command `pbc box' to draw
+#   the unit cell.
 #
 # Author: Dan Michael O. Heggø <danmichaelo _at_ gmail.com>
 #
-#   Great aid was obtained from looking into the code of the 'ruler' plugin by Cohen, 
-#   the 'colorscalebar' plugin by Liang and the 'pbctools' plugin by Henin, Lenz, Mura and Saam.
+#   I'm grateful to Cohen for the 'ruler' plugin and Liang for the 'colorscalebar' plugin,
+#   whose code provided great help!
 #
 # Installation:
 #
-#   Put the crystallography folder in a folder searched by VMD, that is, a folder listed in auto_path. 
-#   For instance, you may put it in ~/vmd/plugins, and add
+#   Put the crystallography folder in a folder searched by VMD, that is, a folder listed 
+#   in auto_path. For instance, you may put it in ~/vmd/plugins, and add
 #       set auto_path [concat $env(HOME)/vmd/plugins $auto_path] ;
-#   to your ~/.vmdrc file. To add the plugin to the Plugins-menu, add the following to your ~/.vmdrc file 
-#   (or just type it in VMD when needed):
+#   to your ~/.vmdrc file. To add the plugin to the Plugins-menu, add the following to 
+#   your ~/.vmdrc file (or just type it in VMD when needed):
 #       vmd_install_extension crystallography cryst_tk "Crystallography"
 #   
 # Miller indices:
@@ -46,17 +50,22 @@
 #
 # Known bug(s):
 #
-#   When graphic elements are drawn in the VMD window, these elements need to be redrawn when the display 
-#   is altered in some way. The plugin listens to VMD events to be notified about such display changes,
-#   but VMD does not seem to inform about all such changes. Examples of events that does not seem to be 
-#   broudcasted include
-#      - smooth rotations: rotate [x | y | z] <angle> <increment>
-#      - display resize
+#   1. When graphic elements are drawn in the VMD window, these elements need to be 
+#      redrawn when the display is altered in some way. The plugin listens to VMD events 
+#      to be notified about such display changes, but VMD does not seem to inform about 
+#      all such changes. Examples of events that does not seem to be broudcasted include
+#       - smooth rotations: rotate [x | y | z] <angle> <increment>
+#       - display resize
+#
+#   2. There are some drawing issues with the view vectors. The text may for instance
+#      crash slightly the arrows. The problem is that VMD provides no (known) ways
+#      for computing the size of text primitives added by VMD's graphics command. 
+#      Also there seems to be no way to use a monospaced font(?)
+#
 
-
-#############################################################################################
+#########################################################################################
 #                                    Main commands 
-#############################################################################################
+#########################################################################################
 
 #########################################
 # cryst_help
@@ -69,7 +78,7 @@ proc cryst {} {
     puts "      View along the \[uvw\] axis"
     puts "   view_towards {h k l}    or    'view_along hkl'"
     puts "      View along the normal to the (hkl) plane"
-    puts "   crystal_axes on|off -position lower-left|upper-left|lower-right|upper-right"
+    puts "   cryst_axes on|off -position lower-left|upper-left|lower-right|upper-right"
     puts "      Toggle crystallographic vectors a, b, c"
     puts "   view_vectors on|off -position lower-left|upper-left|lower-right|upper-right"
     puts "      Toggle view vectors (x and y direction in crystal coordinates)"
@@ -216,16 +225,16 @@ proc view_towards {args} {
 }
 
 ##########################################
-# crystal_axes on|off
+# cryst_axes on|off
 # OPTIONS:
 #   -position lower-left|upper-left|lower-right|upper-right
 # Toggles the display of the crystal axes. Currently, the GUI provides 
 # some more options than the command line interface.
 # 
-proc crystal_axes {args} {
+proc cryst_axes {args} {
     if {[llength $args] == 0} {
-        puts "usage: crystal_axes on/off"
-        puts "example: crystal_axes on"
+        puts "usage: cryst_axes on/off [-position lower-left|upper-left|lower-right|upper-right]"
+        puts "example: cryst_axes on"
         return
     }
 
@@ -329,10 +338,23 @@ proc cryst_info {} {
 # testing of the plugin.
 # 
 proc check_norm {} {
-# NOTE: using molinfo 0 instead of molinfo $currentMol !!
-    set rot [molinfo 0 get rotate_matrix]
+    # WARNING: using molinfo 0 instead of molinfo $currentMol !!
+    set rot [lindex [molinfo 0 get rotate_matrix] 0]
+    
+    set dotxy [vecdot [lindex $rot 0] [lindex $rot 1]]
+    set dotxz [vecdot [lindex $rot 0] [lindex $rot 2]]
+    set dotyz [vecdot [lindex $rot 1] [lindex $rot 2]]
+    if {$dotxy == 0.0 && $dotxz == 0. && $dotyz == 0.} {
+        puts "Coordinate vectors are orthogonal"
+    } else {
+        puts "Coordinate vectors are not orthogonal"
+        puts "dot(x,y) = $dotxy"
+        puts "dot(x,z) = $dotxz"
+        puts "dot(y,z) = $dotyz"    
+    }
+    
     for {set i 0} {$i < 3} {incr i} {
-        puts [vecdot [lindex $rot 0 $i] [lindex $rot 0 $i]]
+        puts "Vector length: [veclength [lindex $rot $i]]"
     } 
 }
 
@@ -406,9 +428,9 @@ proc matrix4to3 {mat} {
     return $mat
 }
 
-#############################################################################################
+#########################################################################################
 #                               Crystallography "class"  
-#############################################################################################
+#########################################################################################
 
 package provide crystallography 1.1
 
@@ -419,7 +441,7 @@ namespace eval ::Crystallography:: {
     set listenersEnabled 0     ;# whether the event listeners (Tcl "tracers") are activated or not
     #set crystallographyState off
 
-    set darkColor black
+    set darkColor gray
     set lightColor white
 
     set crystColor $darkColor   ;# use a dark foreground color? 
@@ -649,7 +671,7 @@ proc ::Crystallography::read_pbc {} {
 
 proc ::Crystallography::vecproj { u v } {
     if {abs([vecdot $u $v]) < 1e-16} {
-        puts "Error in ::Crystallography::vecproj: Vectors u anv v are orthogonal"
+        debug "Warning: ::Crystallography::vecproj: Vectors u anv v are orthogonal"
     }
     return [vecscale [expr [vecdot $v $u] / [vecdot $u $u]] $u]
 }
@@ -853,9 +875,12 @@ proc ::Crystallography::get_view_vector {vec basis} {
 }
 
 proc ::Crystallography::equalLists {x1 x2} {
+
+    set treshold 0.01   ;# Make this smaller if you want to work with vectors like [100 0 0]
+
     if {[llength $x1] != [llength $x2]} { return 0; }
     for {set i 0} {$i<[llength $x1]} {incr i} {
-        if {abs([lindex $x1 $i] - [lindex $x2 $i]) > 0.0001} { return 0; }
+        if {abs([lindex $x1 $i] - [lindex $x2 $i]) > $treshold} { return 0; }
     }
     return 1;    
 }
@@ -869,9 +894,9 @@ proc ::Crystallography::roundLists {x} {
 }
 
 
-#############################################################################################
+#########################################################################################
 #                                   Drawing section
-#############################################################################################
+#########################################################################################
 
 proc ::Crystallography::currentMolChanged {args} {
     variable currentMol
@@ -1119,7 +1144,7 @@ proc ::Crystallography::draw_2d_arrow {args} {
 proc ::Crystallography::draw_arrow_label {args} {
     variable canvasMol
     variable displaySize
-    set dist 0.2
+    set dist 0.25               ;# distance from arrowhead to label
     set fontsize 1.0
     set char_width 0.03			;# the empirical character width "constant" at unit fontsize 
 
@@ -1144,7 +1169,7 @@ proc ::Crystallography::draw_arrow_label {args} {
     set dist [vecscale $dist [lreplace $vec 2 2 0.0]] ;# x,y direction only, drop z direction
 
     set cos_ang [expr {[vecdot "1 0 0" "$dist"] / [veclength "$dist"]}]   ;# [-1,1]
-    set char_width [expr {$displaySize(x)*$fontsize*$char_width}]
+    set char_width [expr {$displaySize(y)*$fontsize*$char_width}]
     set str_width [expr {$char_width * [string length $label] }]
     set dx [expr {-$str_width/2. + $str_width/2*$cos_ang}] ;# subtract for approximate center-alignment
     set dist [vecadd $dist "$dx 0 0"]
@@ -1172,6 +1197,9 @@ proc ::Crystallography::draw_arrow_label {args} {
 #   scale_vec_to_integer {-0.07312614470720291 0.0 0.05484461039304733} returns {-4 0 3} 
 #
 proc ::Crystallography::scale_vec_to_integer {vec} {
+    
+    set maxint 100   ;# make this larger if you want to work with vectors like [200 0 0]
+    
     set scale 1.e6
     for {set j 0} {$j < 3} {incr j} {
         set vlen [expr {abs([lindex $vec $j])}]
@@ -1180,17 +1208,17 @@ proc ::Crystallography::scale_vec_to_integer {vec} {
         }
     }
     debug "Vec is $vec. Scale is $scale" 
-    for {set i 1} {$i <= 1000} {incr i} {
+    for {set i 1} {$i <= $maxint} {incr i} {
         set int_vec [vecscale [expr {$i/$scale}] $vec]
         set rounded [roundLists $int_vec]
-        debug " Attempt $i of 1000: $rounded"
+        debug " Attempt $i of $maxint: $rounded"
         if {[equalLists $rounded $int_vec] == 1} {
             debug "   attempt successful"
             return $rounded
         }
     }
-    puts "ERROR: Could not find suitable simple vector representation"
     # Should we return something?
+    return {}
 }
 
 ############################################################
@@ -1225,7 +1253,10 @@ proc ::Crystallography::draw_arrow_miller_label {args} {
     }
     
     # Scale vector to integer values (e.g. [0.7 0 0.7] -> [1 0 1])
-    set int_proj [scale_vec_to_integer $proj]  
+    set int_proj [scale_vec_to_integer $proj]
+    if {[llength $int_proj] == 0} {
+        set int_proj $proj     ;# means that we failed to obtain one
+    }
     #set int_proj [vecscale [expr {1./$scale}] $proj]
 
     set x [lindex $int_proj 0]
@@ -1252,8 +1283,8 @@ proc ::Crystallography::draw_arrow_miller_label {args} {
         set txt [format "\[%d%d%d\]" $absx $absy $absz ] 
         set lab_pos [draw_arrow_label $origin $vec $txt -fontsize $fontsize]
 
-        # Add overbars:
-        set char_width [expr {$displaySize(x)*$fontsize*$char_width}]
+        # Add overbars: (for some reason it seems like it's displaySize(y) that determines the font size)
+        set char_width [expr {$displaySize(y)*$fontsize*$char_width}]
         set bar_pos [vecadd $lab_pos "[expr {-0.01*$char_width}] [expr {1.7*$char_width}] 0"]
         graphics $canvasMol text $bar_pos " $barx$bary$barz " size $fontsize
 
@@ -1334,12 +1365,14 @@ proc ::Crystallography::draw_CrystallographicAxes {} {
     }
 
     # if out of screen, fix
-    if {[set oos [expr {$origin_x + $len*$a_x + 0.90}]] < 0.} { set origin_x [expr {$origin_x - $oos}] 
-    } elseif {[set oos [expr {$origin_x + $len*$a_x - 0.90}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
-    if {[set oos [expr {$origin_x + $len*$b_x + 0.90}]] < 0.} { set origin_x [expr {$origin_x - $oos}]
-    } elseif {[set oos [expr {$origin_x + $len*$b_x - 0.90}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
-    if {[set oos [expr {$origin_x + $len*$c_x + 0.90}]] < 0.} { set origin_x [expr {$origin_x - $oos}] 
-    } elseif {[set oos [expr {$origin_x + $len*$c_x - 0.90}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
+    puts "$origin_x, $len, $a_x"
+    set f [expr {$displaySize(y)/$displaySize(x)}]
+    if {[set oos [expr {$origin_x + $len*$a_x*$f + 0.90}]] < 0.} { set origin_x [expr {$origin_x - $oos}] 
+    } elseif {[set oos [expr {$origin_x + $len*$a_x*$f - 0.90}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
+    if {[set oos [expr {$origin_x + $len*$b_x*$f + 0.90}]] < 0.} { set origin_x [expr {$origin_x - $oos}]
+    } elseif {[set oos [expr {$origin_x + $len*$b_x*$f - 0.90}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
+    if {[set oos [expr {$origin_x + $len*$c_x*$f + 0.90}]] < 0.} { set origin_x [expr {$origin_x - $oos}] 
+    } elseif {[set oos [expr {$origin_x + $len*$c_x*$f - 0.90}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
 
     if {[set oos [expr {$origin_y + $len*$a_y + 0.90}]] < 0.} { set origin_y [expr {$origin_y - $oos}] 
     } elseif {[set oos [expr {$origin_y + $len*$a_y - 0.90}]] > 0.} { set origin_y [expr {$origin_y - $oos}] }
@@ -1359,7 +1392,7 @@ proc ::Crystallography::draw_CrystallographicAxes {} {
     set disp "$displaySize(x) $displaySize(y) $displaySize(z)"
 
     set origin [vecmul "$origin_x $origin_y 1" $disp]
-    set len [expr {$len * $displaySize(x)}]
+    set len [expr {$len * $displaySize(y)}]
     # subtract vector length from z origin to make sure we don't get clipped by near clip:
     lset origin 2 [expr {[lindex $origin 2]-$len}]  
     
@@ -1444,7 +1477,7 @@ proc ::Crystallography::draw_ViewVectors {} {
 
     # Draw arrows
     set disp "$displaySize(x) $displaySize(y) $displaySize(z)"
-    set len [expr {$len * $displaySize(x)}]
+    set len [expr {$len * $displaySize(y)}]
 
     set origin [vecmul $origin $disp]
     set xvec [vecscale $len $xvec]

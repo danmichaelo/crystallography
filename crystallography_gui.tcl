@@ -80,7 +80,7 @@ namespace eval ::Crystallography::GUI:: {
     # Current orientation:
     for {set i 0} {$i < 3} {incr i} {
         for {set j 0} {$j < 3} {incr j} {
-            set orientation_${i}_${j} "-"
+            set orientation(${i},${j}) "-"
         }
     }
 
@@ -110,6 +110,101 @@ namespace eval ::Crystallography::GUI:: {
 proc ::Crystallography::GUI::debug {str} {
     ::Crystallography::debug $str
 }
+
+
+
+proc ::Crystallography::GUI::set_orientation {v vc} {
+    variable orientation
+    #puts "$i $j"
+    #puts "$orientation($i,$j)"
+    
+    #
+    # 1) Initialize new rotation matrix
+    #
+    set rotmat {{0 0 0 0} {0 0 0 0} {0 0 0 0} {0 0 0 1}}
+    for {set i 0} {$i < 3} {incr i} {
+        for {set j 0} {$j < 3} {incr j} {
+            lset rotmat $i $j [expr {double($orientation($i,$j))}]
+        }
+        lset rotmat $i [vecnorm [lindex $rotmat $i]]
+    }
+
+    #
+    # 2) Normalize the focused vector $v, while trying to preserve the
+    #    focused component $vc. I'm sure there is a 
+    #    smarter way to do such a constrained normalization, please shout out
+    #    if you see it!
+    #
+    set nval [expr {double($orientation($v,$vc))}]
+    if {$nval >= 1.0} {
+        lset rotmat $v {0 0 0 0}
+        lset rotmat $v $vc 1.0
+    } elseif {$nval <= -1.0} {
+        lset rotmat $v {0 0 0 0}
+        lset rotmat $v $vc -1.0
+    } else { 
+        for {set i 0} {$i<100} {incr i} {
+            lset rotmat $v $vc $nval
+            #debug "$i  -> [lindex $rotmat $cx]"
+            lset rotmat $v [vecnorm [lindex $rotmat $v]]
+        }
+    }
+    
+    #
+    # 3) Check if any vectors are parallel:
+    #
+    set x [lindex $rotmat 0]
+    set y [lindex $rotmat 1]
+    set z [lindex $rotmat 2]    
+    if { abs([vecdot $x $y]) > 1-1e-10} {
+        puts "ERROR: x and y are parallel"
+        tk_messageBox -message "Error: The x and y vectors are parallel." -icon warning
+        return 0
+    }
+    if { abs([vecdot $x $z]) > 1-1e-10} {
+        puts "ERROR: x and z are parallel"
+        tk_messageBox -message "Error: The x and z vectors are parallel." -icon warning
+        return 0
+    }
+    if { abs([vecdot $y $z]) > 1-1e-10} {
+        tk_messageBox -message "Error: The y and z vectors are parallel." -icon warning
+        puts "ERROR: y and z are parallel"
+        return 0
+    }
+    
+    #
+    # 4) Gram Schmidt orthogonalization
+    #
+    if {$v == 0} {
+        set y [vecnorm [vecsub $y [::Crystallography::vecproj $x $y] ]]
+        set z [vecnorm [vecsub [vecsub $z [::Crystallography::vecproj $y $z]] [::Crystallography::vecproj $x $z] ]]
+    } elseif {$v == 1} {
+        set z [vecnorm [vecsub $z [::Crystallography::vecproj $y $z] ]]
+        set x [vecnorm [vecsub [vecsub $x [::Crystallography::vecproj $z $x]] [::Crystallography::vecproj $y $x] ]]
+    } elseif {$v == 2} {
+        set x [vecnorm [vecsub $x [::Crystallography::vecproj $z $x] ]]
+        set y [vecnorm [vecsub [vecsub $y [::Crystallography::vecproj $x $y]] [::Crystallography::vecproj $z $y] ]]
+    }
+
+    #
+    # 5) Finally, update
+    #
+    lset rotmat 0 $x
+    lset rotmat 1 $y
+    lset rotmat 2 $z
+    debug "New rotation matrix: $rotmat"    
+    foreach molid [molinfo list] {
+        # only rotate layers containing atoms:
+        #if {[[atomselect 0 "all"] num] > 0} {
+        molinfo $molid set rotate_matrix [list $rotmat]
+        #}
+    }
+    set ::Crystallography::orientationChanged 1
+    ::Crystallography::update
+    update_gui
+    return 1
+}
+
 
 proc ::Crystallography::GUI::set_view_direction { } {
     variable projvec_0
@@ -143,6 +238,14 @@ proc ::Crystallography::GUI::set_view_direction { } {
         set projvec [::Crystallography::get_view_vector "z" "rec"]
         set upvec [::Crystallography::get_view_vector "y" "dir"]	
 	}
+    if {[llength $projvec] == 0} {
+        puts "ERROR: Could not find suitable simple vector representation for the projection vector."
+        puts "       You may try to increase 'maxint' in ::Crystallography::scale_vec_to_integer"
+    }
+    if {[llength $upvec] == 0} {
+        puts "ERROR: Could not find suitable simple vector representation for the up vector."
+        puts "       You may try to increase 'maxint' in ::Crystallography::scale_vec_to_integer"
+    }
 
     set projvec_0 [lindex $projvec 0]
     set projvec_1 [lindex $projvec 1]
@@ -203,8 +306,8 @@ proc ::Crystallography::GUI::update_gui {args} {
         set latticeParamText('gamma') "-"
         for {set i 0} {$i < 3} {incr i} {
             for {set j 0} {$j < 3} {incr j} {
-                variable orientation_${i}_${j}
-                set orientation_${i}_${j}       
+                variable orientation
+                set orientation(${i},${j})
             }
         }
         return
@@ -251,8 +354,8 @@ proc ::Crystallography::GUI::update_gui {args} {
     set rot [molinfo $::Crystallography::currentMol get rotate_matrix]
     for {set i 0} {$i < 3} {incr i} {
         for {set j 0} {$j < 3} {incr j} {
-            variable orientation_${i}_${j}
-            set orientation_${i}_${j} [format "%+1.3f" [lindex $rot 0 $i $j] ]
+            variable orientation
+            set orientation(${i},${j}) [format "%+1.3f" [lindex $rot 0 $i $j] ]
         }
     }
 
@@ -347,8 +450,11 @@ proc ::Crystallography::GUI::show_gui {} {
     grid $w.orientation.label_2 -column 0 -row 2
     for {set i 0} {$i < 3} {incr i} {
         for {set j 0} {$j < 3} {incr j} {
-            ttk::label $w.orientation.coords_${i}_${j} -textvariable ::Crystallography::GUI::orientation_${i}_${j} -font TkFixedFont
+            ttk::entry $w.orientation.coords_${i}_${j} -width 7 -font {TkFixedFont} \
+            -textvariable ::Crystallography::GUI::orientation($i,$j) -validate {focusout} \
+            -validatecommand [list ::Crystallography::GUI::set_orientation $i $j]
             grid $w.orientation.coords_${i}_${j} -row $i -column [expr $j+1]
+            bind $w.orientation.coords_${i}_${j} <Return> [list ::Crystallography::GUI::set_orientation $i $j]
         }
     }
     pack $w.orientation -side top -fill x -padx 10 -pady 4
@@ -366,7 +472,7 @@ proc ::Crystallography::GUI::show_gui {} {
     grid [ttk::label $w.draw.crystaxeslabel -text "Scale:"] -row 1 -column 1 -sticky ws
     grid [ttk::scale $w.draw.crystaxesscale -orient horizontal -length 100 -from 50.0 -to 150.0 -variable ::Crystallography::crystAxesScale] -row 1 -column 2 
 
-    ttk::checkbutton $w.draw.viewvectors -text "orientation vectors" -variable ::Crystallography::drawViewVectors
+    ttk::checkbutton $w.draw.viewvectors -text "view vectors" -variable ::Crystallography::drawViewVectors
     grid $w.draw.viewvectors -row 2 -column 0 -columnspan 3 -sticky w 
 
     ttk::optionmenu $w.draw.viewvectorsloc ::Crystallography::viewVectorsLoc "lower left" "upper left" "lower right" "upper right"
@@ -403,16 +509,19 @@ proc ::Crystallography::GUI::show_gui {} {
     grid $w.viewdir.main.vec.ul -column 1 -row 0
     ttk::entry $w.viewdir.main.vec.u -width 4 -textvariable ::Crystallography::GUI::projvec_0
     grid $w.viewdir.main.vec.u -column 2 -row 0
+    bind $w.viewdir.main.vec.u <Return> {::Crystallography::GUI::set_view_direction}
 
     ttk::label $w.viewdir.main.vec.vl -textvariable ::Crystallography::GUI::labelProj2
     grid $w.viewdir.main.vec.vl -column 3 -row 0
     ttk::entry $w.viewdir.main.vec.v -width 4 -textvariable ::Crystallography::GUI::projvec_1
     grid $w.viewdir.main.vec.v -column 4 -row 0
+    bind $w.viewdir.main.vec.v <Return> {::Crystallography::GUI::set_view_direction}
 
     ttk::label $w.viewdir.main.vec.wl -textvariable ::Crystallography::GUI::labelProj3
     grid $w.viewdir.main.vec.wl -column 5 -row 0
     ttk::entry $w.viewdir.main.vec.w -width 4 -textvariable ::Crystallography::GUI::projvec_2
     grid $w.viewdir.main.vec.w -column 6 -row 0
+    bind $w.viewdir.main.vec.w <Return> {::Crystallography::GUI::set_view_direction}
 
     ttk::label $w.viewdir.main.vec.uplabel -text "Upward vector (y):" 
     grid $w.viewdir.main.vec.uplabel -column 0 -row 1 -sticky w 
@@ -421,16 +530,19 @@ proc ::Crystallography::GUI::show_gui {} {
     grid $w.viewdir.main.vec.hl -column 1 -row 1
     ttk::entry $w.viewdir.main.vec.h -width 4 -textvariable ::Crystallography::GUI::upvec_0
     grid $w.viewdir.main.vec.h -column 2 -row 1
+    bind $w.viewdir.main.vec.h <Return> {::Crystallography::GUI::set_view_direction}
 
     ttk::label $w.viewdir.main.vec.kl -textvariable ::Crystallography::GUI::labelUp2
     grid $w.viewdir.main.vec.kl -column 3 -row 1
     ttk::entry $w.viewdir.main.vec.k -width 4 -textvariable ::Crystallography::GUI::upvec_1
     grid $w.viewdir.main.vec.k -column 4 -row 1
+    bind $w.viewdir.main.vec.k <Return> {::Crystallography::GUI::set_view_direction}
 
     ttk::label $w.viewdir.main.vec.ll -textvariable ::Crystallography::GUI::labelUp3 
     grid $w.viewdir.main.vec.ll -column 5 -row 1
     ttk::entry $w.viewdir.main.vec.l -width 4 -textvariable ::Crystallography::GUI::upvec_2
     grid $w.viewdir.main.vec.l -column 6 -row 1
+    bind $w.viewdir.main.vec.l <Return> {::Crystallography::GUI::set_view_direction}
 
     pack $w.viewdir.main.vec -side top -padx 4 -pady 4
 
@@ -471,9 +583,6 @@ proc ::Crystallography::GUI::show_gui {} {
 
     # When the window is closed:
     wm protocol $w WM_DELETE_WINDOW {::Crystallography::GUI::destroy_gui}
-
-    # When <Enter> is pressed, we set the view direction
-    bind $w <Return> {::Crystallography::GUI::set_view_direction}
 
     # When <Esc> is pressed, we close the window
     bind $w <Escape> {::Crystallography::GUI::destroy_gui}
