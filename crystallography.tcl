@@ -78,7 +78,7 @@ proc cryst {} {
     puts "      View along the \[uvw\] axis"
     puts "   view_towards {h k l}    or    'view_along hkl'"
     puts "      View along the normal to the (hkl) plane"
-    puts "   cryst_axes on|off -position lower-left|upper-left|lower-right|upper-right"
+    puts "   cryst_axes on|off -position lower-left|upper-left|lower-right|upper-right -scale 1.0"
     puts "      Toggle crystallographic vectors a, b, c"
     puts "   view_vectors on|off -position lower-left|upper-left|lower-right|upper-right"
     puts "      Toggle view vectors (x and y direction in crystal coordinates)"
@@ -228,6 +228,7 @@ proc view_towards {args} {
 # cryst_axes on|off
 # OPTIONS:
 #   -position lower-left|upper-left|lower-right|upper-right
+#   -scale <float>
 # Toggles the display of the crystal axes. Currently, the GUI provides 
 # some more options than the command line interface.
 # 
@@ -250,6 +251,7 @@ proc cryst_axes {args} {
         set val [ lindex $args [expr $argnum + 1]]
         switch -- $arg {
             "-position"      { set ::Crystallography::crystAxesLoc [string map {{-} { }} $val]; incr argnum }
+            "-scale"      { set ::Crystallography::crystAxesScale [expr {100.0*[string map {{-} { }} $val]}]; incr argnum }
             default { error "error: crystallogrpahy: unknown option: $arg" }
         }
     }
@@ -1382,7 +1384,7 @@ proc ::Crystallography::draw_CrystallographicAxes {} {
 
     set len [expr {0.2 * $crystAxesScale / 100.}]
     #set thickness [expr {2. * $crystAxesScale / 100.}]
-    set fontsize [expr {$crystAxesScale / 100.}]
+    set fontsize [expr {$crystAxesScale * 1.5 / 100.}]
     
     switch "$crystAxesLoc" {
         "lower left" { set origin_x $posLowerLeft(x); set origin_y $posLowerLeft(y); }
@@ -1393,7 +1395,7 @@ proc ::Crystallography::draw_CrystallographicAxes {} {
     }
 
     # if out of screen, fix
-    puts "$origin_x, $len, $a_x"
+    #puts "$origin_x, $len, $a_x"
     set f [expr {$displaySize(y)/$displaySize(x)}]
     if {[set oos [expr {$origin_x + $len*$a_x*$f + 0.90}]] < 0.} { set origin_x [expr {$origin_x - $oos}] 
     } elseif {[set oos [expr {$origin_x + $len*$a_x*$f - 0.90}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
