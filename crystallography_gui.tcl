@@ -1,29 +1,21 @@
-#
 # crystallography_gui.tcl : Crystallography VMD plugin GUI
+# Author: Dan Michael O. Heggø <danmichaelo _at_ gmail.com>
 #
-# This plugin was written to make it easier to project the view direction along 
-# crystallographic directions. 
-# It adds commands to convert vectors between crystallographic and cartesian coordinates 
-# and a simple GUI for setting the view. The GUI is largely inspired by the "Orientation" 
-# window of the program VESTA and the "Set View Direction" window of CrystalMaker.
+#   GUI for the crystallography plugin. Partly inspired by the "Orientation" 
+#   window of the program VESTA and the "Set View Direction" window of CrystalMaker.
 # 
-# This plugin makes use of Tile/Ttk, a styles and theming widget collection which can replace 
-# most of the widgets in Tk with variants which are truly platform native through calls to an
-# operating system's API. Themes covered in this way are Windows XP, Windows Classic, 
-# Qt (which hooks into the X11 KDE environment libraries) and Aqua (Mac OS X).
-# http://wiki.tcl.tk/11075
+#   This plugin makes use of Tile/Ttk, a styles and theming widget collection which can replace 
+#   most of the widgets in Tk with variants which are truly platform native through calls to an
+#   operating system's API. Themes covered in this way are Windows XP, Windows Classic, 
+#   Qt (which hooks into the X11 KDE environment libraries) and Aqua (Mac OS X).
+#   http://wiki.tcl.tk/11075
 #
-# For the plugin to work, the loaded molecule must contain unit cell information.
+# Usage:
 #
-# Author: Dan Michael Heggø
-# 
-# usage: cryst
-# GUI: cryst_tk
-# 
-# Add to menu:
-# menu tk register "Crystallography" cryst_tk
-# or
-# vmd_install_extension cryst cryst_tk "Crystallography"
+#   The GUI is started with the cryst_tk command. To add a menu item:
+#   > menu tk register "Crystallography" cryst_tk
+#   or
+#   > vmd_install_extension cryst cryst_tk "Crystallography"
 #
 
 # Opens the GUI
@@ -298,12 +290,12 @@ proc ::Crystallography::GUI::update_gui {args} {
     # If a molecule hasn't been selected, go away
     if { [catch { molinfo $::Crystallography::currentMol get id } ] } {
         debug "No molecule loaded"
-        set latticeParamText('a') "-"
-        set latticeParamText('b') "-" 
-        set latticeParamText('c') "-" 
-        set latticeParamText('alpha') "-"
-        set latticeParamText('beta') "-"
-        set latticeParamText('gamma') "-"
+        set latticeParamText(a) "-"
+        set latticeParamText(b) "-" 
+        set latticeParamText(c) "-" 
+        set latticeParamText(alpha) "-"
+        set latticeParamText(beta) "-"
+        set latticeParamText(gamma) "-"
         for {set i 0} {$i < 3} {incr i} {
             for {set j 0} {$j < 3} {incr j} {
                 variable orientation
@@ -318,36 +310,36 @@ proc ::Crystallography::GUI::update_gui {args} {
     # Lattice parameters (formatted nicely for the GUI):
     set p [ lindex [ pbc get -molid $::Crystallography::currentMol ] 0] 
     if {"[lindex $p 0]" == "0"} {
-        set latticeParamText('a') "unit cell data missing"
-        set latticeParamText('b') ""
-        set latticeParamText('c') ""
-        set latticeParamText('alpha') ""
-        set latticeParamText('beta') ""
-        set latticeParamText('gamma') ""
+        set latticeParamText(a) "unit cell data missing"
+        set latticeParamText(b) ""
+        set latticeParamText(c) ""
+        set latticeParamText(alpha) ""
+        set latticeParamText(beta) ""
+        set latticeParamText(gamma) ""
         $w.viewdir.buttons.apply state disabled
-        $w.quickview.buttons.a state disabled
-        $w.quickview.buttons.b state disabled
-        $w.quickview.buttons.c state disabled
-        $w.quickview.buttons.aa state disabled
-        $w.quickview.buttons.bb state disabled
-        $w.quickview.buttons.cc state disabled
+        $w.viewdir.quickview.buttons.a state disabled
+        $w.viewdir.quickview.buttons.b state disabled
+        $w.viewdir.quickview.buttons.c state disabled
+        $w.viewdir.quickview.buttons.aa state disabled
+        $w.viewdir.quickview.buttons.bb state disabled
+        $w.viewdir.quickview.buttons.cc state disabled
         
     } else {
         set a [lindex $p 0]; set b [lindex $p 1]; set c [lindex $p 2];
         set alpha [lindex $p 3]; set beta [lindex $p 4]; set gamma [lindex $p 5];
-        set latticeParamText('a') [format "a = %.03f Å" $a]
-        set latticeParamText('b') [format "b = %.03f Å" $b]
-        set latticeParamText('c') [format "c = %.03f Å" $c]
-        set latticeParamText('alpha') [format "α = %.02f°" $alpha]
-        set latticeParamText('beta') [format "β = %.02f°" $beta]
-        set latticeParamText('gamma') [format "γ = %.02f°" $gamma]
+        set latticeParamText(a) [format "a = %.03f Å" $a]
+        set latticeParamText(b) [format "b = %.03f Å" $b]
+        set latticeParamText(c) [format "c = %.03f Å" $c]
+        set latticeParamText(alpha) [format "α = %.02f°" $alpha]
+        set latticeParamText(beta) [format "β = %.02f°" $beta]
+        set latticeParamText(gamma) [format "γ = %.02f°" $gamma]
         $w.viewdir.buttons.apply state !disabled
-        $w.quickview.buttons.a state !disabled
-        $w.quickview.buttons.b state !disabled
-        $w.quickview.buttons.c state !disabled
-        $w.quickview.buttons.aa state !disabled
-        $w.quickview.buttons.bb state !disabled
-        $w.quickview.buttons.cc state !disabled
+        $w.viewdir.quickview.buttons.a state !disabled
+        $w.viewdir.quickview.buttons.b state !disabled
+        $w.viewdir.quickview.buttons.c state !disabled
+        $w.viewdir.quickview.buttons.aa state !disabled
+        $w.viewdir.quickview.buttons.bb state !disabled
+        $w.viewdir.quickview.buttons.cc state !disabled
     }
 
     # Update orientation (formatted for the GUI)
@@ -419,12 +411,12 @@ proc ::Crystallography::GUI::show_gui {} {
     # Lattice parameters
 
     ttk::labelframe $w.uc -text "Current lattice parameters:" 
-    ttk::label $w.uc.a -textvariable ::Crystallography::GUI::latticeParamText('a')
-    ttk::label $w.uc.b -textvariable ::Crystallography::GUI::latticeParamText('b')
-    ttk::label $w.uc.c -textvariable ::Crystallography::GUI::latticeParamText('c')
-    ttk::label $w.uc.alpha -textvariable ::Crystallography::GUI::latticeParamText('alpha')
-    ttk::label $w.uc.beta -textvariable ::Crystallography::GUI::latticeParamText('beta') 
-    ttk::label $w.uc.gamma -textvariable ::Crystallography::GUI::latticeParamText('gamma')
+    ttk::label $w.uc.a -textvariable ::Crystallography::GUI::latticeParamText(a)
+    ttk::label $w.uc.b -textvariable ::Crystallography::GUI::latticeParamText(b)
+    ttk::label $w.uc.c -textvariable ::Crystallography::GUI::latticeParamText(c)
+    ttk::label $w.uc.alpha -textvariable ::Crystallography::GUI::latticeParamText(alpha)
+    ttk::label $w.uc.beta -textvariable ::Crystallography::GUI::latticeParamText(beta) 
+    ttk::label $w.uc.gamma -textvariable ::Crystallography::GUI::latticeParamText(gamma)
 
     grid $w.uc.a -column 0 -row 0 -sticky w
     grid $w.uc.b -column 1 -row 0 -sticky w
@@ -458,33 +450,6 @@ proc ::Crystallography::GUI::show_gui {} {
         }
     }
     pack $w.orientation -side top -fill x -padx 10 -pady 4
-
-    # Axes
-
-    ttk::labelframe $w.draw -text "Draw:"
-    ttk::checkbutton $w.draw.crystaxes -text "crystallographic axes" -variable ::Crystallography::drawCrystAxes 
-    grid $w.draw.crystaxes -row 0 -column 0 -columnspan 3 -sticky w 
-
-    ttk::optionmenu $w.draw.crystaxesloc ::Crystallography::crystAxesLoc "lower left" "upper left" "lower right" "upper right"
-    grid $w.draw.crystaxesloc -row 0 -column 3 -sticky we
-
-    grid [ttk::label $w.draw.space0 -text "    "] -row 1 -column 0 -sticky w 
-    grid [ttk::label $w.draw.crystaxeslabel -text "Scale:"] -row 1 -column 1 -sticky ws
-    grid [ttk::scale $w.draw.crystaxesscale -orient horizontal -length 100 -from 50.0 -to 150.0 -variable ::Crystallography::crystAxesScale] -row 1 -column 2 
-
-    ttk::checkbutton $w.draw.viewvectors -text "view vectors" -variable ::Crystallography::drawViewVectors
-    grid $w.draw.viewvectors -row 2 -column 0 -columnspan 3 -sticky w 
-
-    ttk::optionmenu $w.draw.viewvectorsloc ::Crystallography::viewVectorsLoc "lower left" "upper left" "lower right" "upper right"
-    grid $w.draw.viewvectorsloc -row 2 -column 3 -sticky we
-
-    grid [ttk::label $w.draw.space1 -text "    "] -row 3 -column 0 -sticky w 
-    grid [ttk::label $w.draw.viewveclabel -text "Scale:"] -row 3 -column 1 -sticky ws
-    grid [ttk::scale $w.draw.viewvecscale -orient horizontal -length 100 -from 50.0 -to 150.0 -variable ::Crystallography::viewVectorsScale] -row 3 -column 2 
-
-    grid columnconfigure $w.draw 3 -weight 1 -minsize 15
-
-    pack $w.draw -side top -fill x -padx 10 -pady 4
 
     # View direction
 
@@ -552,31 +517,89 @@ proc ::Crystallography::GUI::show_gui {} {
 
     pack $w.viewdir.main $w.viewdir.buttons -side top 
 
-    # Pack together
+    ## Presets
+
+    ttk::frame $w.viewdir.quickview
+    ttk::label $w.viewdir.quickview.caption -text "Presets:";
+    pack $w.viewdir.quickview.caption -side top -fill x
+
+    ttk::frame $w.viewdir.quickview.buttons
+    ttk::button $w.viewdir.quickview.buttons.a -text "a" -command {::Crystallography::GUI::set_view_from_preset "a"}
+    ttk::button $w.viewdir.quickview.buttons.b -text "b" -command {::Crystallography::GUI::set_view_from_preset "b"}
+    ttk::button $w.viewdir.quickview.buttons.c -text "c" -command {::Crystallography::GUI::set_view_from_preset "c"}
+    ttk::button $w.viewdir.quickview.buttons.aa -text "a*" -command {::Crystallography::GUI::set_view_from_preset "a*"}
+    ttk::button $w.viewdir.quickview.buttons.bb -text "b*" -command {::Crystallography::GUI::set_view_from_preset "b*"}
+    ttk::button $w.viewdir.quickview.buttons.cc -text "c*" -command {::Crystallography::GUI::set_view_from_preset "c*"}
+    grid $w.viewdir.quickview.buttons.a -column 0 -row 0
+    grid $w.viewdir.quickview.buttons.b -column 1 -row 0
+    grid $w.viewdir.quickview.buttons.c -column 2 -row 0
+    grid $w.viewdir.quickview.buttons.aa -column 0 -row 1
+    grid $w.viewdir.quickview.buttons.bb -column 1 -row 1
+    grid $w.viewdir.quickview.buttons.cc -column 2 -row 1
+    pack $w.viewdir.quickview.buttons -side top -fill x -padx 10 -pady 4
+    pack $w.viewdir.quickview -side top -fill x -padx 10 -pady 4
 
     pack $w.viewdir -side top -fill x -padx 10 -pady 4
 
-    ttk::labelframe $w.quickview -text "View presets:";
-    ttk::frame $w.quickview.buttons
-    ttk::button $w.quickview.buttons.a -text "a" -command {::Crystallography::GUI::set_view_from_preset "a"}
-    ttk::button $w.quickview.buttons.b -text "b" -command {::Crystallography::GUI::set_view_from_preset "b"}
-    ttk::button $w.quickview.buttons.c -text "c" -command {::Crystallography::GUI::set_view_from_preset "c"}
-    ttk::button $w.quickview.buttons.aa -text "a*" -command {::Crystallography::GUI::set_view_from_preset "a*"}
-    ttk::button $w.quickview.buttons.bb -text "b*" -command {::Crystallography::GUI::set_view_from_preset "b*"}
-    ttk::button $w.quickview.buttons.cc -text "c*" -command {::Crystallography::GUI::set_view_from_preset "c*"}
-    grid $w.quickview.buttons.a -column 0 -row 0
-    grid $w.quickview.buttons.b -column 1 -row 0
-    grid $w.quickview.buttons.c -column 2 -row 0
-    grid $w.quickview.buttons.aa -column 0 -row 1
-    grid $w.quickview.buttons.bb -column 1 -row 1
-    grid $w.quickview.buttons.cc -column 2 -row 1
-    pack $w.quickview.buttons -side top -fill x -padx 10 -pady 4
-    pack $w.quickview -side top -fill x -padx 10 -pady 4
+    # Draw section
+
+    ttk::labelframe $w.draw -text "Draw:"
+    
+    ## row 0:
+    ttk::checkbutton $w.draw.crystaxes -text "crystallographic axes" -variable ::Crystallography::drawCrystAxes 
+    grid $w.draw.crystaxes -row 0 -column 0 -columnspan 3 -sticky w
+    ttk::optionmenu $w.draw.crystaxesloc ::Crystallography::crystAxesLoc "lower left" "upper left" "lower right" "upper right"
+    grid $w.draw.crystaxesloc -row 0 -column 3 -sticky we
+
+    ## row 1:
+    grid [ttk::label $w.draw.space0 -text "    "] -row 1 -column 0 -sticky w 
+    grid [ttk::label $w.draw.crystaxeslabel -text "Scale:"] -row 1 -column 1 -sticky ws
+    grid [ttk::scale $w.draw.crystaxesscale -orient horizontal -length 100 -from 50.0 -to 150.0 -variable ::Crystallography::crystAxesScale] -row 1 -column 2 
+
+    ## row 2:
+    ttk::checkbutton $w.draw.viewvectors -text "view vectors" -variable ::Crystallography::drawViewVectors
+    grid $w.draw.viewvectors -row 2 -column 0 -columnspan 3 -sticky w 
+    ttk::optionmenu $w.draw.viewvectorsloc ::Crystallography::viewVectorsLoc "lower left" "upper left" "lower right" "upper right"
+    grid $w.draw.viewvectorsloc -row 2 -column 3 -sticky we
+
+    ## row 3:
+    grid [ttk::label $w.draw.space1 -text "    "] -row 3 -column 0 -sticky w 
+    grid [ttk::label $w.draw.viewveclabel -text "Scale:"] -row 3 -column 1 -sticky ws
+    grid [ttk::scale $w.draw.viewvecscale -orient horizontal -length 100 -from 50.0 -to 150.0 -variable ::Crystallography::viewVectorsScale] -row 3 -column 2 
+
+    ## row 4:
+    ttk::label $w.draw.marginlabel -text "Margin:"
+    grid $w.draw.marginlabel -row 4 -column 0 -columnspan 4 -sticky w
+
+    ## row 5:
+    grid [ttk::label $w.draw.marginlabelX -text "x:"] -row 5 -column 1 -sticky w
+    # ttk:scale doesn't take decimal values, so we scale them up by 100: (lambda functions would have been nice here?)
+    grid [ttk::scale $w.draw.marginlabelXscale -orient horizontal -length 100 -from 0 -to 100 -command {::Crystallography::GUI::margin_x_onchange}] -row 5 -column 2 
+    grid [ttk::label $w.draw.marginlabelXvalue -text " "] -row 5 -column 3 -sticky w
+    
+    ## row 6:
+    grid [ttk::label $w.draw.marginlabelY -text "y:"] -row 6 -column 1 -sticky w
+    # ttk:scale doesn't take decimal values, so we scale them up by 100: (lambda functions would have been nice here?)
+    grid [ttk::scale $w.draw.marginlabelYscale -orient horizontal -length 100 -from 0 -to 100 -command {::Crystallography::GUI::margin_y_onchange}] -row 6 -column 2 
+    grid [ttk::label $w.draw.marginlabelYvalue -text " "] -row 6 -column 3 -sticky w
+
+    grid [ttk::label $w.draw.footer -text "Note: space for labels is not included." -font TkSmallCaptionFont -foreground "dark slate gray"] -row 7 -column 0 -columnspan 4 -sticky w
+
+    grid columnconfigure $w.draw 3 -weight 1 -minsize 15
+
+    pack $w.draw -side top -fill x -padx 10 -pady 4
+
+    
+    # Footer:    
     
     ttk::label $w.footer -text "Tip: Type 'cryst' in console for command line usage" -font TkSmallCaptionFont -foreground "dark slate gray"
     pack $w.footer -side top -fill x -padx 10 -pady 4
 
     update_gui
+    
+    # Initialize scalers:
+    margin_x_cb
+    margin_y_cb
 
     ######################################
     # Subscribe to some events (remember to unsubscribe to all upon destroy_gui below)
@@ -600,8 +623,32 @@ proc ::Crystallography::GUI::show_gui {} {
 
     # When the orientation is changed, we update the orientation frame
     trace add variable ::vmd_logfile write ::Crystallography::GUI::logfile_cb
+
+    # When margin is changed (either from the GUI or from command line)
+    trace add variable ::Crystallography::margin(x) write ::Crystallography::GUI::margin_x_cb
+    trace add variable ::Crystallography::margin(y) write ::Crystallography::GUI::margin_y_cb
     
     return $w
+}
+
+proc ::Crystallography::GUI::margin_x_cb { args } {
+    set v $::Crystallography::margin(x)
+    .crystallography.draw.marginlabelXscale configure -value [expr {$v*100}]
+    .crystallography.draw.marginlabelXvalue configure -text [format "%.0f %%" [expr {$v*50}]]
+}
+
+proc ::Crystallography::GUI::margin_y_cb { args } {
+    set v $::Crystallography::margin(y)
+    .crystallography.draw.marginlabelYscale configure -value [expr {$v*100}]
+    .crystallography.draw.marginlabelYvalue configure -text [format "%.0f %%" [expr {$v*50}]]
+}
+
+proc ::Crystallography::GUI::margin_x_onchange {val} {
+    set ::Crystallography::margin(x) [expr {$val/100.0}]
+}
+
+proc ::Crystallography::GUI::margin_y_onchange {val} {
+    set ::Crystallography::margin(y) [expr {$val/100.0}]
 }
 
 proc ::Crystallography::GUI::set_view_from_preset {preset} {
@@ -650,6 +697,9 @@ proc ::Crystallography::GUI::destroy_gui {} {
     trace remove variable ::Crystallography::GUI::projAlong write ::Crystallography::GUI::update_gui_projalong
     trace remove variable ::vmd_initialize_structure write ::Crystallography::GUI::initialize_structure_cb 
     trace remove variable ::vmd_logfile write ::Crystallography::GUI::logfile_cb
+    trace remove variable ::Crystallography::margin(x) write ::Crystallography::GUI::margin_x_cb
+    trace remove variable ::Crystallography::margin(y) write ::Crystallography::GUI::margin_y_cb
+
     destroy $w
 }
 
@@ -695,7 +745,7 @@ proc ::Crystallography::GUI::fill_mol_menu {name} {
             if {[molinfo $mm get numatoms] > 0 } {
                 lappend molList $mm
                 $name add radiobutton -variable ::Crystallography::currentMol \
-                -value $mm -label "$mm: [lindex [molinfo $mm get name] 0]"
+                  -value $mm -label "$mm: [lindex [molinfo $mm get name] 0]"
             }
         }
     }

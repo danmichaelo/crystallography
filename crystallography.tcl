@@ -1,5 +1,5 @@
-#
 # crystallography.tcl : Crystallography VMD plugin
+# Author: Dan Michael O. Heggø <danmichaelo _at_ gmail.com>
 #
 #   This plugin was written primarily to make it easier to align the view direction along 
 #   specific crystallographic directions. It also includes commands to convert vectors 
@@ -10,8 +10,6 @@
 #   If VMD can not read this from your file, it can be set manually using the 
 #   pbctools plugin. Note that pbctools also provide the nice command `pbc box' to draw
 #   the unit cell.
-#
-# Author: Dan Michael O. Heggø <danmichaelo _at_ gmail.com>
 #
 #   I'm grateful to Cohen for the 'ruler' plugin and Liang for the 'colorscalebar' plugin,
 #   whose code provided great help!
@@ -320,17 +318,17 @@ proc cryst_info {} {
     set a [lrange [lindex $::Crystallography::unitCell 0] 0 2]
     set b [lrange [lindex $::Crystallography::unitCell 1] 0 2]
     set c [lrange [lindex $::Crystallography::unitCell 2] 0 2]
-    puts [format "  a1 = \[% .8f, % .8f, % .8f\]" [lindex $a 0] [lindex $a 1] [lindex $a 2]]
-    puts [format "  a2 = \[% .8f, % .8f, % .8f\]" [lindex $b 0] [lindex $b 1] [lindex $b 2]]
-    puts [format "  a3 = \[% .8f, % .8f, % .8f\]" [lindex $c 0] [lindex $c 1] [lindex $c 2]]
+    puts [format "  a1 = \[% .6f, % .6f, % .6f\]" [lindex $a 0] [lindex $a 1] [lindex $a 2]]
+    puts [format "  a2 = \[% .6f, % .6f, % .6f\]" [lindex $b 0] [lindex $b 1] [lindex $b 2]]
+    puts [format "  a3 = \[% .6f, % .6f, % .6f\]" [lindex $c 0] [lindex $c 1] [lindex $c 2]]
 
     puts "Reciprocal lattice vectors:"
     set aa [lrange [lindex $::Crystallography::recUnitCell 0] 0 2]
     set bb [lrange [lindex $::Crystallography::recUnitCell 1] 0 2]
     set cc [lrange [lindex $::Crystallography::recUnitCell 2] 0 2]
-    puts [format "  b1 = \[% .8f, % .8f, % .8f\]" [lindex $aa 0] [lindex $aa 1] [lindex $aa 2]]
-    puts [format "  b2 = \[% .8f, % .8f, % .8f\]" [lindex $bb 0] [lindex $bb 1] [lindex $bb 2]]
-    puts [format "  b3 = \[% .8f, % .8f, % .8f\]" [lindex $cc 0] [lindex $cc 1] [lindex $cc 2]]
+    puts [format "  b1 = \[% .6f, % .6f, % .6f\]" [lindex $aa 0] [lindex $aa 1] [lindex $aa 2]]
+    puts [format "  b2 = \[% .6f, % .6f, % .6f\]" [lindex $bb 0] [lindex $bb 1] [lindex $bb 2]]
+    puts [format "  b3 = \[% .6f, % .6f, % .6f\]" [lindex $cc 0] [lindex $cc 1] [lindex $cc 2]]
 }
 
 ##########################################
@@ -434,6 +432,8 @@ proc matrix4to3 {mat} {
 #                               Crystallography "class"  
 #########################################################################################
 
+package require math::constants
+package require pbctools
 package provide crystallography 1.1
 
 namespace eval ::Crystallography:: {
@@ -445,6 +445,9 @@ namespace eval ::Crystallography:: {
 
     set darkColor gray
     set lightColor white
+    
+    # creates two variables, radtodeg and (its reciprocal) degtorad in the calling namespace
+    ::math::constants::constants radtodeg degtorad
 
     set crystColor $darkColor   ;# use a dark foreground color? 
     set canvasMol -1                 ;# mol in which the drawing is done
@@ -457,8 +460,6 @@ namespace eval ::Crystallography:: {
     set orientationChanged 0         ;# track orientation
     set printDebug 0                 ;# print debug messages or not
     set currentFrame -1		         ;# 
-    set progressIndicatorFound 0     ;# has ProgressIndicator timeline been found?
-    set progressIndicatorMargin 0.3  ;# margin for ProgressIndicator timeline
     set currentMol [molinfo top]     ;# mol of study
     if { $currentMol == -1 } { set currentMol "none" }
     set previousMol $currentMol
@@ -491,11 +492,15 @@ namespace eval ::Crystallography:: {
     set viewVectorsLoc "lower left"
     trace add variable ::Crystallography::viewVectorsLoc write ::Crystallography::drawSettingsChanged
 
-    array set posLowerLeft {x -0.90 y -0.90}
-    array set posUpperLeft {x -0.90 y 0.90}
-    array set posLowerRight {x 0.90 y -0.90}
-    array set posUpperRight {x 0.90 y 0.90}
+    array set posLowerLeft {x -0.99 y -0.99}
+    array set posUpperLeft {x -0.99 y 0.99}
+    array set posLowerRight {x 0.99 y -0.99}
+    array set posUpperRight {x 0.99 y 0.99}
+    array set margin {x 0.10 y 0.10}
     
+    trace add variable ::Crystallography::margin(x) write ::Crystallography::drawSettingsChanged
+    trace add variable ::Crystallography::margin(y) write ::Crystallography::drawSettingsChanged
+
     trace add variable ::vmd_logfile write ::Crystallography::on_vmd_log_event
 
 }
@@ -503,7 +508,7 @@ namespace eval ::Crystallography:: {
 
 proc ::Crystallography::debug {str} {
     variable printDebug
-    if {$printDebug} { puts "DEBUG: $str" }
+    if {$printDebug} { puts "crystallography) $str" }
 }
 
 proc ::Crystallography::update {} {
@@ -611,6 +616,7 @@ proc ::Crystallography::read_pbc {} {
     variable latticeParam
     variable currentMol
     variable unitCellValid
+    variable degtorad
 
     set p [ lindex [ pbc get -molid $currentMol ] 0] 
     if {$p == $latticeParam} { return 0 }    ;# nothing changed, no need to continue
@@ -629,9 +635,9 @@ proc ::Crystallography::read_pbc {} {
     set a [lindex $p 0] 
     set b [lindex $p 1] 
     set c [lindex $p 2]  
-    set alpha [::util::deg2rad [lindex $p 3]]
-    set beta [::util::deg2rad [lindex $p 4]]
-    set gamma [::util::deg2rad [lindex $p 5]]
+    set alpha [expr {[lindex $p 3] * $degtorad}]
+    set beta [expr {[lindex $p 4] * $degtorad}]
+    set gamma [expr {[lindex $p 5] * $degtorad}]
 
     # Unit cell volume:
     set unitCellVol [ expr $a*$b*$c*sqrt( 1 - cos($alpha)**2 - cos($beta)**2 - cos($gamma)**2 + 2*cos($alpha)*cos($beta)*cos($gamma) ) ]
@@ -824,9 +830,7 @@ proc ::Crystallography::set_view_direction { args } {
 
     if { $y_ok == 0 } {
         # subtract from y_vec the projection of y_vec onto z_vec (Gram Schmidt orthogonalization)
-
         set y_vec [vecnorm [ vecsub $y_vec [vecproj $z_vec $y_vec] ]]
-
     }
 
     # set x vector ("rightwards" vector)
@@ -915,7 +919,7 @@ proc ::Crystallography::currentMolChanged {args} {
     variable currentMol
     variable previousMol
     if {$previousMol != $currentMol} {
-        debug ">>>>>>>>>>>> Current mol changed from $previousMol to $currentMol"
+        debug "Current mol changed from $previousMol to $currentMol"
         set previousMol $currentMol
         drawSettingsChanged
     }  
@@ -941,6 +945,8 @@ proc ::Crystallography::check_canvas {} {
     variable currentMol
     if {![catch {molinfo $canvasMol get id}]} return   ;# Canvas exists
     debug ">>>>>>>>>>>> Creating canvas"
+    
+    set topMol [molinfo top]
 
     # Create canvas mol for drawing:
     set canvasMol [mol new]
@@ -951,8 +957,11 @@ proc ::Crystallography::check_canvas {} {
     # This requires some testing.
     # mol fix $canvasMol
 
+    debug "Top mol is $topMol"
+    mol top $topMol
+
     if {$currentMol != "none" && $currentMol >= 0} {
-        mol top $currentMol
+        debug "Current mol is $currentMol"
         molinfo $canvasMol set scale_matrix [molinfo $currentMol get scale_matrix]  
     }
     debug " ok"
@@ -982,6 +991,7 @@ proc ::Crystallography::enable_listeners {args} {
 proc ::Crystallography::disable_listeners {} {
     variable listenersEnabled
     variable canvasMol
+    variable currentMol
 
     if {$listenersEnabled == 0} return                    ;# already inactive
 
@@ -1047,18 +1057,18 @@ proc ::Crystallography::on_vmd_event { args } {
             update
         }
     } elseif {"[lindex $args 0]" == "vmd_frame"} {
-    # It appears like VMD calls vmd_frame for each drawing update. For example,
-    # the command "rotate z by 1" will trigger vmd_frame up to 4 times if our 
-    # plugin is active..
-    if {$currentMol != "none"} {
-        set f [molinfo $currentMol get frame]
-        if {$f != $currentFrame} {
-            debug "  new frame: $f"
-            set currentFrame $f
-            update
+        # It appears like VMD calls vmd_frame for each drawing update. For example,
+        # the command "rotate z by 1" will trigger vmd_frame up to 4 times if our 
+        # plugin is active..
+        if {$currentMol != "none"} {
+            set f [molinfo $currentMol get frame]
+            if {$f != $currentFrame} {
+                debug "  new frame: $f"
+                set currentFrame $f
+                update
+            }
         }
     }
-}
 }
 
 proc ::Crystallography::on_vmd_quit { args } {
@@ -1174,6 +1184,7 @@ proc ::Crystallography::draw_2d_arrow {args} {
 proc ::Crystallography::draw_arrow_label {args} {
     variable canvasMol
     variable displaySize
+    variable margin
     set dist 0.25               ;# distance from arrowhead to label
     set fontsize 1.0
     set char_width 0.03			;# the empirical character width "constant" at unit fontsize 
@@ -1204,11 +1215,18 @@ proc ::Crystallography::draw_arrow_label {args} {
     set dx [expr {-$str_width/2. + $str_width/2*$cos_ang}] ;# subtract for approximate center-alignment
     set dist [vecadd $dist "$dx 0 0"]
     set lab_pos [vecadd $end $dist]
+    
     # If label goes out of screen, fix it:
-    if {[set oos [expr {[lindex $lab_pos 0] + .95*$displaySize(x)}]] < 0.} { 
-        set lab_pos [vecadd $lab_pos "[expr {-$oos}] 0 0"] }
-    if {[set oos [expr {[lindex $lab_pos 0] + $str_width - 0.95*$displaySize(x)}]] > 0.} { 
-        set lab_pos [vecadd $lab_pos "[expr {-$oos}] 0 0"] }
+    #
+    # set limx [expr {1.0-$margin(x)}]
+    # set limy [expr {1.0-$margin(y)}]
+    # 
+    # if {[set oos [expr {[lindex $lab_pos 0] + $limx*$displaySize(x)}]] < 0.} { 
+    #     set lab_pos [vecadd $lab_pos "[expr {-$oos}] 0 0"] }
+    #     
+    # if {[set oos [expr {[lindex $lab_pos 0] + $str_width - $limx*$displaySize(x)}]] > 0.} { 
+    #     set lab_pos [vecadd $lab_pos "[expr {-$oos}] 0 0"] }
+    
     graphics $canvasMol text $lab_pos "$label" thickness $fontsize size $fontsize
 
     # Debug: Uncomment to visualize the quality of the pseudo-center-alignment:
@@ -1329,26 +1347,6 @@ proc ::Crystallography::draw_arrow_miller_label {args} {
     #set lab_pos [vecadd $origin "[vecscale 1.2 $xvec]"]  ;# add some space
 }
 
-proc ::Crystallography::checkForProgressIndicator {} {
-  #variable posLowerLeft
-  #variable posLowerRight
-  #variable progressIndicatorMargin
-  variable progressIndicatorFound
-  if {![catch {package present ProgressIndicator}]} {
-    if {$::ProgressIndicator::timeline_on && !$progressIndicatorFound} {
-      puts "Crystallography: Addition of statusindicator plugin detected. Let's adjust"
-      #set posLowerLeft(y) [expr {$posLowerLeft(y) - $progressIndicatorMargin}]
-      #set posLowerRight(y) [expr {$posLowerRight(y) - $progressIndicatorMargin}]
-      set progressIndicatorFound 1
-    } elseif {!$::ProgressIndicator::timeline_on && $progressIndicatorFound} {
-      puts "Crystallography: Removal of statusindicator plugin detected. Let's adjust"
-      #set posLowerLeft(y) [expr {$posLowerLeft(y) + $progressIndicatorMargin}]
-      #set posLowerRight(y) [expr {$posLowerRight(y) + $progressIndicatorMargin}]
-      set progressIndicatorFound 0
-    }
-  }
-}
-
 proc ::Crystallography::draw_CrystallographicAxes {} {
     variable unitCell
     variable currentMol
@@ -1358,8 +1356,8 @@ proc ::Crystallography::draw_CrystallographicAxes {} {
     variable posUpperLeft
     variable posUpperRight
     variable posLowerRight
+    variable margin
     variable displaySize
-    variable progressIndicatorFound
 
     set rot [lindex [molinfo $currentMol get rotate_matrix] 0]
 
@@ -1385,35 +1383,33 @@ proc ::Crystallography::draw_CrystallographicAxes {} {
     set len [expr {0.2 * $crystAxesScale / 100.}]
     #set thickness [expr {2. * $crystAxesScale / 100.}]
     set fontsize [expr {$crystAxesScale * 1.5 / 100.}]
-    
+
     switch "$crystAxesLoc" {
-        "lower left" { set origin_x $posLowerLeft(x); set origin_y $posLowerLeft(y); }
-        "upper left" { set origin_x $posUpperLeft(x); set origin_y $posUpperLeft(y); }
-        "upper right" { set origin_x $posUpperRight(x); set origin_y $posUpperRight(y); }
-        "lower right" { set origin_x $posLowerRight(x); set origin_y $posLowerRight(y); }
+        "lower left" { set origin_x [expr {$posLowerLeft(x)+$margin(x)}]; set origin_y [expr {$posLowerLeft(y)+$margin(y)}]; }
+        "upper left" { set origin_x [expr {$posUpperLeft(x)+$margin(x)}]; set origin_y [expr {$posUpperLeft(y)-$margin(y)}]; }
+        "upper right" { set origin_x [expr {$posUpperRight(x)-$margin(x)}]; set origin_y [expr {$posUpperRight(y)-$margin(y)}]; }
+        "lower right" { set origin_x [expr {$posLowerRight(x)-$margin(x)}]; set origin_y [expr {$posLowerRight(y)+$margin(y)}]; }
         default { set origin_x 0; set origin_y 0; }
     }
 
     # if out of screen, fix
     #puts "$origin_x, $len, $a_x"
     set f [expr {$displaySize(y)/$displaySize(x)}]
-    if {[set oos [expr {$origin_x + $len*$a_x*$f + 0.90}]] < 0.} { set origin_x [expr {$origin_x - $oos}] 
-    } elseif {[set oos [expr {$origin_x + $len*$a_x*$f - 0.90}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
-    if {[set oos [expr {$origin_x + $len*$b_x*$f + 0.90}]] < 0.} { set origin_x [expr {$origin_x - $oos}]
-    } elseif {[set oos [expr {$origin_x + $len*$b_x*$f - 0.90}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
-    if {[set oos [expr {$origin_x + $len*$c_x*$f + 0.90}]] < 0.} { set origin_x [expr {$origin_x - $oos}] 
-    } elseif {[set oos [expr {$origin_x + $len*$c_x*$f - 0.90}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
+    set limx [expr {1.0-$margin(x)}]
+    set limy [expr {1.0-$margin(y)}]    
+    if {[set oos [expr {$origin_x + $len*$a_x*$f + $limx}]] < 0.} { set origin_x [expr {$origin_x - $oos}] 
+    } elseif {[set oos [expr {$origin_x + $len*$a_x*$f - $limx}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
+    if {[set oos [expr {$origin_x + $len*$b_x*$f + $limx}]] < 0.} { set origin_x [expr {$origin_x - $oos}]
+    } elseif {[set oos [expr {$origin_x + $len*$b_x*$f - $limx}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
+    if {[set oos [expr {$origin_x + $len*$c_x*$f + $limx}]] < 0.} { set origin_x [expr {$origin_x - $oos}] 
+    } elseif {[set oos [expr {$origin_x + $len*$c_x*$f - $limx}]] > 0.} { set origin_x [expr {$origin_x - $oos}] }
 
-    if {[set oos [expr {$origin_y + $len*$a_y + 0.90}]] < 0.} { set origin_y [expr {$origin_y - $oos}] 
-    } elseif {[set oos [expr {$origin_y + $len*$a_y - 0.90}]] > 0.} { set origin_y [expr {$origin_y - $oos}] }
-    if {[set oos [expr {$origin_y + $len*$b_y + 0.90}]] < 0.} { set origin_y [expr {$origin_y - $oos}] 
-    } elseif {[set oos [expr {$origin_y + $len*$b_y - 0.90}]] > 0.} { set origin_y [expr {$origin_y - $oos}] }
-    if {[set oos [expr {$origin_y + $len*$c_y + 0.90}]] < 0.} { set origin_y [expr {$origin_y - $oos}] 
-    } elseif {[set oos [expr {$origin_y + $len*$c_y - 0.90}]] > 0.} { set origin_y [expr {$origin_y - $oos}] }
-
-    # quick and dirty:
-    checkForProgressIndicator
-    if {$progressIndicatorFound} { set origin_y [expr {$origin_y + 0.2}] }
+    if {[set oos [expr {$origin_y + $len*$a_y + $limy}]] < 0.} { set origin_y [expr {$origin_y - $oos}] 
+    } elseif {[set oos [expr {$origin_y + $len*$a_y - $limy}]] > 0.} { set origin_y [expr {$origin_y - $oos}] }
+    if {[set oos [expr {$origin_y + $len*$b_y + $limy}]] < 0.} { set origin_y [expr {$origin_y - $oos}] 
+    } elseif {[set oos [expr {$origin_y + $len*$b_y - $limy}]] > 0.} { set origin_y [expr {$origin_y - $oos}] }
+    if {[set oos [expr {$origin_y + $len*$c_y + $limy}]] < 0.} { set origin_y [expr {$origin_y - $oos}] 
+    } elseif {[set oos [expr {$origin_y + $len*$c_y - $limy}]] > 0.} { set origin_y [expr {$origin_y - $oos}] }
     
     #draw_2d_arrow "$origin_x $origin_y 0" "[expr $len*$a_x] [expr $len*$a_y] 0" "a" $thickness
     #draw_2d_arrow "$origin_x $origin_y 0" "[expr $len*$b_x] [expr $len*$b_y] 0" "b" $thickness
@@ -1454,18 +1450,9 @@ proc ::Crystallography::draw_ViewVectors {} {
     variable posUpperLeft
     variable posUpperRight
     variable posLowerRight
+    variable margin
     variable displaySize
-    variable progressIndicatorFound
     
-    # quick and dirty fix for moving the origin if the statusindicator is enabled too:
-    checkForProgressIndicator
-    set lowerLeftY $posLowerLeft(y)
-    set lowerRightY $posLowerRight(y)
-    if {$progressIndicatorFound} { 
-        set lowerLeftY [expr {$lowerLeftY + 0.15}]
-        set lowerRightY [expr {$lowerRightY + 0.15}] 
-    }
-
     set len [expr {0.2 * $viewVectorsScale / 100.}]
     set thickness [expr {3. * $viewVectorsScale / 100.}]
     set fontsize [expr {2. * $viewVectorsScale / 100.}]
@@ -1474,29 +1461,29 @@ proc ::Crystallography::draw_ViewVectors {} {
 
     set rot [molinfo $currentMol get rotate_matrix]
     switch "$viewVectorsLoc" {
-        "lower left" { 
-            set origin "$posLowerLeft(x) $lowerLeftY 1"
+        "lower left" {
+            set origin "[expr {$posLowerLeft(x)+$margin(x)}] [expr {$posLowerLeft(y)+$margin(y)}] 1"
             set xvec "1.0 0.0 0.0"                                 ;# rightwards
             set xproj [cart2dir [lindex $rot 0 0]]
             set yvec "0.0 1.0 0.0"                                 ;# upwards
             set yproj [cart2dir [lindex $rot 0 1]]
         }
         "upper left" { 
-            set origin "$posUpperLeft(x) $posUpperLeft(y) 1"
+            set origin "[expr {$posUpperLeft(x)+$margin(x)}] [expr {$posUpperLeft(y)-$margin(y)}] 1"
             set xvec "1.0 0.0 0.0"                                 ;# rightwards
             set xproj [cart2dir [lindex $rot 0 0]]
             set yvec "0.0 -1.0 0.0"                                ;# downwards 
             set yproj [cart2dir [vecscale -1 [lindex $rot 0 1]]]
         }
         "upper right" { 
-            set origin "$posUpperRight(x) $posUpperRight(y) 1";
+            set origin "[expr {$posUpperRight(x)-$margin(x)}] [expr {$posUpperRight(y)-$margin(y)}] 1"
             set xvec "-1.0 0.0 0.0"                                ;# leftwards 
             set xproj [cart2dir [vecscale -1 [lindex $rot 0 0]]]
             set yvec "0.0 -1.0 0.0"                                ;# downwards 
             set yproj [cart2dir [vecscale -1 [lindex $rot 0 1]]]
         }
         "lower right" { 
-            set origin "$posLowerRight(x) $lowerRightY 1" 
+            set origin "[expr {$posLowerRight(x)-$margin(x)}] [expr {$posLowerRight(y)+$margin(y)}] 1"
             set xvec "-1.0 0.0 0.0"                                ;# leftwards 
             set xproj [cart2dir [vecscale -1 [lindex $rot 0 0]]]
             set yvec "0.0 1.0 0.0"                                 ;# upwards
