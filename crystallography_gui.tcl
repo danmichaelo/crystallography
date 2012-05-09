@@ -60,11 +60,11 @@ proc ttk::optionmenu {w varName firstValue args} {
 #                                      GUI "class"
 #############################################################################################
 
-package provide crystallography_gui 1.0
+package provide crystallography_gui 1.2
 
 namespace eval ::Crystallography::GUI:: {
 
-    package require crystallography 1.0
+    package require crystallography 1.2
 
     # Lattice parameters (formatted nicely for the GUI):
     array set latticeParamText {a - b - c - alpha - beta - gamma -}  ;# a,b,c,alpha,beta,gamma 	
