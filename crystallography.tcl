@@ -56,8 +56,8 @@
 #       - display resize
 #
 #   2. There are some drawing issues with the view vectors. The text may for instance
-#      crash slightly the arrows. The problem is that VMD provides no (known) ways
-#      for computing the size of text primitives added by VMD's graphics command. 
+#      crash slightly into the arrows. The problem is that VMD to my knowledge provides 
+#      no ways for computing the size of text primitives added by VMD's graphics command. 
 #      Also there seems to be no way to use a monospaced font(?)
 #
 
