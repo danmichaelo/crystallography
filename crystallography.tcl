@@ -433,7 +433,7 @@ proc matrix4to3 {mat} {
 #########################################################################################
 
 if {[catch {package require math::constants}]} {
-    print "Note: TCL standard library not found."
+    puts "Note: TCL standard library not found."
 }
 package require pbctools
 package provide crystallography 1.1
@@ -890,7 +890,7 @@ proc ::Crystallography::get_view_vector {vec basis} {
 			default { error "error: get_view_vector: vector must be x, y or z" }
 		}
 	} else {
-	    print "ERROR: unknown basis"
+	    puts "ERROR: unknown basis"
 	    return
 	}
 	
