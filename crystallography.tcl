@@ -432,7 +432,9 @@ proc matrix4to3 {mat} {
 #                               Crystallography "class"  
 #########################################################################################
 
-package require math::constants
+if {[catch {package require math::constants}]} {
+    print "Note: TCL standard library not found."
+}
 package require pbctools
 package provide crystallography 1.1
 
@@ -447,7 +449,12 @@ namespace eval ::Crystallography:: {
     set lightColor white
     
     # creates two variables, radtodeg and (its reciprocal) degtorad in the calling namespace
-    ::math::constants::constants radtodeg degtorad
+    if {![catch {package present math::constants}]} {
+        ::math::constants::constants radtodeg degtorad
+    } else {
+        set radtodeg 57.2957795131000012
+        set degtorad 0.0174532925199430
+    }
 
     set crystColor $darkColor   ;# use a dark foreground color? 
     set canvasMol -1                 ;# mol in which the drawing is done
