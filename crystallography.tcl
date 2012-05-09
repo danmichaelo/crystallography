@@ -436,7 +436,7 @@ if {[catch {package require math::constants}]} {
     puts "Note: TCL standard library not found."
 }
 package require pbctools
-package provide crystallography 1.1
+package provide crystallography 1.2
 
 namespace eval ::Crystallography:: {
 
