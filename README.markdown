@@ -43,11 +43,18 @@ All the above can also be carried out using the GUI, that can be opened by using
 
 See `crystallography.tcl` for more information.
 
+![Vector drawing](https://github.com/danmichaelo/crystallography/raw/master/samples/vmdscene.png)
+
 # GUI
+
+The font rendering on Linux is probably better if VMD is built with Tcl 8.5 instead of 8.4.
+Seems to be encoding issues on Windows.
+
 
 ![GUI on Mac OS X](https://github.com/danmichaelo/crystallography/raw/master/samples/gui_mac.png)
 
 ![GUI on Linux/Gnome](https://github.com/danmichaelo/crystallography/raw/master/samples/gui_gnome.png)
 
-![Vector drawing](https://github.com/danmichaelo/crystallography/raw/master/samples/vmdscene.png)
+![GUI on Windows XP](https://github.com/danmichaelo/crystallography/raw/master/samples/gui_windows.png)
+
 
