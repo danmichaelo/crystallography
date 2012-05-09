@@ -20,9 +20,9 @@ the unit cell.
 Put the crystallography folder in a folder searched by VMD, that is, a folder
 listed in `auto_path`. For instance, you may put it in `~/vmd/plugins`, and add
 
-    set auto_path [concat $env(HOME)/vmd/plugins $auto_path] ;
+    set auto_path [concat "{$env(HOME)/vmd/plugins}" $auto_path] ;
 
-to your `~/.vmdrc` file. To add the plugin to the Plugins-menu, add the following
+to your `~/.vmdrc` (or `vmd.rc' on Windows) file. To add the plugin to the Plugins-menu, add the following
 to your `~/.vmdrc` file (or just type it in VMD when needed):
 
     vmd_install_extension crystallography cryst_tk "Crystallography"
