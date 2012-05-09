@@ -47,5 +47,7 @@ See `crystallography.tcl` for more information.
 
 ![GUI on Mac OS X](https://github.com/danmichaelo/crystallography/raw/master/samples/gui_mac.png)
 
+![GUI on Linux/Gnome](https://github.com/danmichaelo/crystallography/raw/master/samples/gui_gnome.png)
+
 ![Vector drawing](https://github.com/danmichaelo/crystallography/raw/master/samples/vmdscene.png)
 
