@@ -25,7 +25,7 @@ listed in `auto_path`. For instance, you may put it in `~/vmd/plugins`, and add
 to your `~/.vmdrc` (or `vmd.rc' on Windows) file. To add the plugin to the Plugins-menu, add the following
 to your `~/.vmdrc` file (or just type it in VMD when needed):
 
-    vmd_install_extension crystallography cryst_tk "Crystallography"
+    vmd_install_extension crystallography_gui cryst_tk "Crystallography"
 
 # Example usage
 
